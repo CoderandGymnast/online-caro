@@ -4,7 +4,7 @@ CommunicationManager::CommunicationManager() {
 	init();
 }
 
-// initialize
+// initialize connections between clients and server
 void CommunicationManager::init() {
 	
 }

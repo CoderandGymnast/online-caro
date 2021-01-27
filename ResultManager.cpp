@@ -13,3 +13,7 @@ void ResultManager::init() {
 ResultManager& ResultManager::getInstance() {
 	return theInstance;
 }
+
+void ResultManager::getRankList() {
+
+}

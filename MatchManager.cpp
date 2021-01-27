@@ -13,3 +13,11 @@ void MatchManager::init() {
 MatchManager& MatchManager::getInstance() {
 	return theInstance;
 }
+
+void MatchManager::createRoom() {
+
+}
+
+void MatchManager::manageScore() {
+
+}

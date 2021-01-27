@@ -13,6 +13,7 @@ private:
 public:
 	void init();
 	static AccountManager& getInstance();
+	void getOnlineAccounts();
 };
 
 // theIntance needs to define since it is static

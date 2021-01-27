@@ -13,6 +13,7 @@ private:
 public:
 	void init();
 	static ResultManager& getInstance();
+	void getRankList();
 };
 
 // theIntance needs to define since it is static

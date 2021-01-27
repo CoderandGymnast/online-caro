@@ -13,3 +13,7 @@ void AccountManager::init() {
 AccountManager& AccountManager::getInstance() {
 	return theInstance;
 }
+
+void AccountManager::getOnlineAccounts() {
+
+}

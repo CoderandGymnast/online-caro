@@ -13,9 +13,9 @@ private:
 public:
 	void init();
 	static MatchManager& getInstance();
+	void createRoom();
+	void manageScore();
 };
 
 // theIntance needs to define since it is static
 MatchManager MatchManager::theInstance;
-#pragma once
-#pragma once
