@@ -139,7 +139,17 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AccountManager.cpp" />
+    <ClCompile Include="CommunicationManager.cpp" />
+    <ClCompile Include="MatchManager.cpp" />
     <ClCompile Include="online-caro.cpp" />
+    <ClCompile Include="ResultManager.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="AccountManager.h" />
+    <ClInclude Include="CommunicationManager.h" />
+    <ClInclude Include="MatchManager.h" />
+    <ClInclude Include="ResultManager.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
