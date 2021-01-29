@@ -18,6 +18,7 @@
 #include <string>
 #include <iostream>
 #include <process.h> /* Contains multi-thread APIs. */
+#include "DatabaseOp.h"
 
 #pragma comment (lib, "Ws2_32.lib")
 
@@ -68,6 +69,9 @@ Account* accountDB;
 #define DB_PATH "./account.txt"
 
 int main(int argc, TCHAR* argv[]) {
+
+	// database object
+	DatabaseOp& m_database = DatabaseOp::getInstance();
 
 	writeAccountsToBuffer();
 	printBuffer();
@@ -135,6 +139,9 @@ int main(int argc, TCHAR* argv[]) {
 	closesocket(listenSock);
 
 	WSACleanup();
+
+	// close database connection
+	m_database.closeConnect();
 
 	return 0;
 }
@@ -234,7 +241,7 @@ void writeAccountsToBuffer() {
 
 	FILE* file;
 	file = fopen(DB_PATH, "r");
-	if (!file) printf("[Error]: Could not access the database.\n");
+	if (!file) printf("[Error]: Could not access the database (this is a test database using / disable this later - in main() line 238).\n");
 
 	bool isFirstRecord = true;
 	Account* account;

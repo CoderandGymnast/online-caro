@@ -15,6 +15,3 @@ public:
 	static AccountManager& getInstance();
 	void getOnlineAccounts();
 };
-
-// theIntance needs to define since it is static
-AccountManager AccountManager::theInstance;

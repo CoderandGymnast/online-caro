@@ -1,5 +1,8 @@
 #include "AccountManager.h"
 
+// theIntance needs to define since it is static
+AccountManager AccountManager::theInstance;
+
 AccountManager::AccountManager() {
 	init();
 }

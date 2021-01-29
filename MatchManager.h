@@ -16,6 +16,3 @@ public:
 	void createRoom();
 	void manageScore();
 };
-
-// theIntance needs to define since it is static
-MatchManager MatchManager::theInstance;

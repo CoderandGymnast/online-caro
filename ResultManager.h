@@ -15,7 +15,3 @@ public:
 	static ResultManager& getInstance();
 	void getRankList();
 };
-
-// theIntance needs to define since it is static
-ResultManager ResultManager::theInstance;
-#pragma once

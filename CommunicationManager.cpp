@@ -1,5 +1,8 @@
 #include "CommunicationManager.h"
 
+// theIntance needs to define since it is static
+CommunicationManager CommunicationManager::theInstance;
+
 CommunicationManager::CommunicationManager() {
 	init();
 }

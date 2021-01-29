@@ -15,5 +15,3 @@ public:
 	static CommunicationManager& getInstance();
 };
 
-// theIntance needs to define since it is static
-CommunicationManager CommunicationManager::theInstance;

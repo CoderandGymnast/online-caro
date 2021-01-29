@@ -1,5 +1,9 @@
 #include "ResultManager.h"
 
+
+// theIntance needs to define since it is static
+ResultManager ResultManager::theInstance;
+
 ResultManager::ResultManager() {
 	init();
 }
