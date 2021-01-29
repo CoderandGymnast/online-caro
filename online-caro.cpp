@@ -1,10 +1,6 @@
 // online-caro.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
-/* TCPServer.cpp : Defines the entry point for the console application. */
-
-/** Doc: https://users.soict.hust.edu.vn/tungbt/it4060q/Lec03.IOMode.pdf */
-
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
 #undef UNICODE
@@ -18,63 +14,20 @@
 #include <string>
 #include <iostream>
 #include <process.h> /* Contains multi-thread APIs. */
+#include <thread>
+#include <ctime>
 
 #pragma comment (lib, "Ws2_32.lib")
 
 #define SERVER_ADDR "127.0.0.1"
 #define BUFF_SIZE 2048
-
-#define USERNAME_OPERATION '1'
-#define PASSWORD_OPERATION '2'
-#define LOGOUT_OPERATION '3'
-
-#define USERNAME_SUCCESS "10"
-#define USERNAME_NOT_FOUND "11"
-#define ACCOUNT_IS_BLOCKED "12"
-#define ACCOUNT_IS_LOGGED_IN "13"
-#define PASSWORD_SUCCESS "20"
-#define PASSWORD_INCORRECT "21"
-#define LOGOUT_SUCCESS "30"
-
-#define STATUS_DEFAULT 0
-#define STATUS_LOGGED_IN 1
-#define STATUS_BLOCKED 2
-
-#define RESPONSE_SIZE 3
-#define DATA_MAX_SIZE 1024
-
-struct Account {
-	char* username;
-	char* password;
-	int status;
-	Account* next;
-	int counter;
-};
-
-bool isValidRequest(char* args, int* totalChars, int* totalDigits);
-void splitCharsAndDigits(char* args, char* chars, char* digits);
-void writeAccountsToBuffer();
-void writeAccountsToBuffer();
-void printBuffer();
-void convertRecordToEntity(char record[], Account* account);
-bool processRequest(char* request, char* response, char* state);
-void processUsername(char* data, char* response, char* state);
-void processPassword(char* data, char* response, char* state);
-void processLogout(char* response, char* state);
-bool processBlockAccount(char* state);
-unsigned __stdcall processRequestThread(void* arg);
-
-Account* accountDB;
-#define DB_PATH "./account.txt"
-
-#include <thread>
-#include <ctime>
-
 #define MAX_ROOMS 1
 #define MAX_USERNAME_SIZE 255
+#define RESPONSE_SIZE 2048
 
 using namespace std;
 
+/* data structure definition: */
 struct Competitor {
 	char* username;
 	SOCKET socket;
@@ -96,9 +49,9 @@ struct UserData {
 	char* operation[2];
 };
 
-// function declarations:
+/* function declaration: */
 void registerRoom(Room* room);
-//int getRoomID();
+unsigned __stdcall processRequestThread(void* arg);
 void initRoom(Competitor* competitors, Room* room);
 int initUserData(SOCKET socket, UserData* userData);
 int registerUserData(UserData* userData);
@@ -109,20 +62,13 @@ void toClient(char* m, SOCKET socket);
 void processFullSlots(SOCKET socket);
 
 Room* rooms;
-//int roomIDGenerator = 0;
-
 UserData* userDatas;
-
 int loggerCounter = 0;
 
 int main(int argc, TCHAR* argv[]) {	
 
 	initLists();
-
 	thread deamon(worker);
-
-	//writeAccountsToBuffer();
-	//printBuffer();
 
 	u_short SERVER_PORT = atoi(argv[1]);
 
@@ -247,268 +193,6 @@ int registerUserData(UserData* userData) {
 	return 0;
 }
 
-/*
-* Validate request from client; Count total characters and total digits.
-* @param     request     [IN] client request.
-* @param     totalChars     [OUT] Total characters
-* @param     totalDigits     [OUT] Total digits.
-* @return     bool     only return true in case request is valid.
-*/
-bool isValidRequest(char* request, int* totalChars, int* totalDigits) {
-
-	char* args = request;
-
-	for (int i = 0; i < strlen(args); i++) {
-		if ((int('A') <= int(toupper(args[i])) && int(toupper(args[i])) <= int('Z'))) *totalChars = *totalChars + 1;
-		else if ((int('0') <= int(args[i]) && int(args[i]) <= int('9'))) *totalDigits = *totalDigits + 1;
-		else return false;
-	}
-
-	return true;
-}
-
-/*
-* Split the arguments into an array of characters and an array of digits.
-* @param     args    [IN] the string arguments.
-* @param     chars     [OUT] the array of characters.
-* @param     chars     [OUT] the array of digits.
-*/
-void splitCharsAndDigits(char* args, char* chars, char* digits) {
-	int charsCounter = 0, numsCounter = 0;
-	for (int i = 0; i < strlen(args); i++) {
-		if ((int('A') <= int(toupper(args[i])) && int(toupper(args[i])) <= int('Z'))) {
-			chars[charsCounter] = args[i];
-			charsCounter++;
-		}
-		else if ((int('0') <= int(args[i]) && int(args[i]) <= int('9'))) {
-			digits[numsCounter] = args[i];
-			numsCounter++;
-		}
-	}
-}
-
-/*
-* Convert record read from the file "account.txt" to the standard entity.
-* @param     record     [IN] The record read from the file "account.txt".
-* @param     account     [OUT] The standard entity.
-*/
-void convertRecordToEntity(char record[], Account* account) {
-
-	const int FIELD_NUMBER = 3;
-
-	const char delimiter[2] = " ";
-	char** buffer = (char**)malloc(FIELD_NUMBER * sizeof(char*));
-	int index = 0;
-	buffer[index] = strtok(record, delimiter);
-	while (buffer[index++] != NULL) {
-		buffer[index] = strtok(NULL, delimiter);
-	}
-	account->username = (char*)malloc(DATA_MAX_SIZE * sizeof(char));
-	account->password = (char*)malloc(DATA_MAX_SIZE * sizeof(char));
-
-	strcpy(account->username, buffer[0]);
-	strcpy(account->password, buffer[1]);
-	account->status = int(buffer[2][0]) - 48; /* Convert from character to integer. */
-	account->next = NULL;
-	account->counter = 0; /* Default value of all counters. */
-}
-
-/*
-* Print all accounts stored on the buffer to the console.
-*/
-void printBuffer() {
-
-	Account* node = accountDB;
-
-	printf("\nDATABASE:\n\n");
-	while (node != NULL) {
-		printf("Username: %s\n", node->username);
-		printf("Password: %s\n", node->password);
-		printf("Status: %d\n\n", node->status);
-		node = node->next;
-	}
-}
-
-/*
-* Read accounts from the file "account.txt" and write them to a linked-list buffer.
-*/
-void writeAccountsToBuffer() {
-
-	accountDB = (Account*)malloc(sizeof(Account));
-
-	const int MAX_RECORD_LENGTH = 1024;
-	char record[MAX_RECORD_LENGTH];
-	Account* node = (Account*)malloc(sizeof(Account));
-
-	FILE* file;
-	file = fopen(DB_PATH, "r");
-	if (!file) printf("[Error]: Could not access the database.\n");
-
-	bool isFirstRecord = true;
-	Account* account;
-
-	while (fgets(record, MAX_RECORD_LENGTH, file) != NULL) {
-		account = (Account*)malloc(sizeof(Account));
-		convertRecordToEntity(record, account);
-
-		if (isFirstRecord) {
-			node = account;
-			isFirstRecord = false;
-			accountDB = node;
-		}
-		else {
-			node->next = account;
-			node = node->next;
-		}
-	}
-
-	fclose(file);
-}
-
-/*
-* Get the operation code from the request.
-* @param     request     The client's request.
-*/
-char getOperationCode(char* request) {
-	return request[0];
-}
-
-/*
-* Get data from the client's request.
-* @param     request    [IN] The client's request.
-* @param     data    [OUT] The data detached from the client's request.
-*/
-void getData(char* request, char* data) {
-	for (int i = 0; i < strlen(request); i++) {
-		data[i] = request[i + 1];
-	}
-}
-
-/*
-* Process the request from the client.
-* @param     request   [IN] The client's request.
-* @param     response    [OUT] The response from this server.
-*/
-bool processRequest(char* request, char* response, char* state) {
-
-	char code = getOperationCode(request);
-	char* data = (char*)malloc(sizeof(char));
-	getData(request, data);
-
-	switch (code) {
-	case USERNAME_OPERATION:
-		processUsername(data, response, state);
-		return true;
-	case PASSWORD_OPERATION:
-		processPassword(data, response, state);
-		return true;
-	case LOGOUT_OPERATION:
-		processLogout(response, state);
-		return true;
-	default:
-		printf("[WARNING]: Client out\n");
-		processLogout(response, state);
-		return false;
-	}
-}
-
-/*
-* Process the username request from the client.
-* @param     data     [IN] The data received from the client.
-* @param     response    [OUT] The response from this server.
-*/
-void processUsername(char* data, char* response, char* state) {
-	printf("Received username: %s\n", data);
-	strcpy(state, data);
-	Account* node = accountDB;
-	while (node != NULL) {
-		if (strcmp(node->username, data) == 0) {
-			if (node->status == STATUS_BLOCKED) {
-				printf("[ERROR]: Account ID '%s' is blocked\n", state);
-				strcpy(response, (char*)ACCOUNT_IS_BLOCKED);
-				return;
-			}
-			else if (node->status == STATUS_LOGGED_IN) {
-				printf("[ERROR]: Account ID '%s' is already logged in\m", state);
-				strcpy(response, (char*)ACCOUNT_IS_LOGGED_IN);
-				return;
-			}
-			printf("[RESPONSE]: Username success - ID '%s'\n", state);
-			strcpy(response, (char*)USERNAME_SUCCESS);
-			return;
-		}
-		node = node->next;
-	}
-	printf("[RESPONSE]: Username not found - ID '%s'\n", state);
-	strcpy(response, (char*)USERNAME_NOT_FOUND);
-}
-
-/*
-* Process the password request from the client.
-* @param     data     [IN] The data received from the client.
-* @param     response     [OUT] The response from this server.
-*/
-void processPassword(char* data, char* response, char* state) {
-	printf("Received password '%s' from ID '%s'\n", data, state);
-	Account* node = accountDB;
-	while (node != NULL) {
-		if (strcmp(node->username, state) == 0) {
-			if (strcmp(node->password, data) == 0) {
-				node->status = STATUS_LOGGED_IN;
-				strcpy(response, (char*)PASSWORD_SUCCESS);
-				printf("[RESPONSE]: Password success - ID '%s'\n\n", state);
-			}
-			else {
-				printf("[RESPONSE]: Password incorrect - ID '%s'\n", state);
-				if (processBlockAccount(state)) strcpy(response, (char*)ACCOUNT_IS_BLOCKED);
-				else strcpy(response, (char*)PASSWORD_INCORRECT);
-			}
-			return;
-		}
-		node = node->next;
-	}
-}
-
-/*
-* Process the 'Block' state of the current account.
-*/
-bool processBlockAccount(char* state) {
-	Account* node = accountDB;
-	while (node != NULL) {
-		if (strcmp(node->username, state) == 0) {
-			if (++node->counter == 3) {
-				node->status = STATUS_BLOCKED;
-				printf("[WARNING]: Account ID '%s' is blocked\n", state);
-				return true;
-			}
-			else {
-				printf("[WARNING]: Incorrect entered password counter '%d' - ID '%s'\n", node->counter, state);
-				break;
-			}
-		}
-		node = node->next;
-	}
-	return false;
-}
-
-/*
-* Process the log out request from client.
-* @param     response    [OUT] The response from this server.
-*/
-void processLogout(char* response, char* state) {
-	Account* node = accountDB;
-	while (node != NULL) {
-		if (strcmp(node->username, state) == 0) {
-			node->status = STATUS_DEFAULT;
-		}
-		node = node->next;
-	}
-	printf("[RESPONSE]: Logout success - ID '%s'\n\n", state);
-	free(state);
-	state = (char*)malloc(DATA_MAX_SIZE * sizeof(char));
-	strcpy(response, (char*)LOGOUT_SUCCESS);
-}
-
 unsigned __stdcall processRequestThread(void* args) {
 
 	char buff[BUFF_SIZE]; // "buff" is a pointer.
@@ -565,13 +249,6 @@ void registerRoom(Room* room) {
 }
 
 /*
-* Generate room ID.
-*/
-//int getRoomID() {
-//	return ++roomIDGenerator;
-//}
-
-/*
 * Create & register room 
 * @param     players     [IN] room players.
 * @param     sockets     [IN] sockets related to room players.
@@ -589,12 +266,7 @@ void worker() {
 	while (1) {
 		Sleep(100);
 		for (int i = 0; i < 2 * MAX_ROOMS; i++) {
-			//cout << userDatas[i].status << endl;
 		}
-		/*for (UserData *userData : userDatas) {
-			cout << userData->status << endl;
-			if (!userData->status) cout << "0";
-		}*/
 	}
 }
 
