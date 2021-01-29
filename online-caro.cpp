@@ -67,7 +67,45 @@ unsigned __stdcall processRequestThread(void* arg);
 Account* accountDB;
 #define DB_PATH "./account.txt"
 
-int main(int argc, TCHAR* argv[]) {
+#define MAX_ROOMS 10
+#define MAX_USERNAME_SIZE 255
+
+using namespace std;
+
+struct Competitor {
+	char* username;
+	SOCKET socket;
+};
+
+struct Room {
+	int id; // NOTE: considering...
+	int turn; // {0; 1}
+	Competitor *competitors;
+	int* map[3][3];
+	int* move[2];
+};
+
+struct UserData {
+	int status; // 0: no operation. 1: challenging. 2: challenged. 3: gaming.
+	char* username;
+	SOCKET socket;
+	Room* room;
+	char* operation[2];
+};
+
+// function declarations:
+void registerRoom(Room* room);
+int getRoomID();
+void initiateRoom(Competitor* competitors, Room* room);
+void initiateUserData(SOCKET socket, UserData* userData);
+void registerUserData(UserData* userData);
+
+Room* rooms[MAX_ROOMS];
+int roomIDGenerator = 0;
+
+UserData* userDatas[2 * MAX_ROOMS];
+
+int main(int argc, TCHAR* argv[]) {	
 
 	writeAccountsToBuffer();
 	printBuffer();
@@ -124,12 +162,15 @@ int main(int argc, TCHAR* argv[]) {
 		connSock = accept(listenSock, (sockaddr*)&clientAddr, &clientAddrLen);
 		printf("Connected socket: %d\n", connSock);
 
+		UserData* userData = (UserData*)malloc(sizeof(UserData));
+		initiateUserData(connSock, userData);
+
 		/*
 		* Create a thread: 1 thread/client.
 		* "start_address" & "arglist".
 		* (?) initflag: https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/beginthread-beginthreadex?view=msvc-160
 		*/
-		_beginthreadex(0, 0, processRequestThread, (void*)connSock, 0, 0);
+		_beginthreadex(0, 0, processRequestThread, (void*)userData, 0, 0);
 	}
 
 	closesocket(listenSock);
@@ -137,6 +178,30 @@ int main(int argc, TCHAR* argv[]) {
 	WSACleanup();
 
 	return 0;
+}
+
+/*
+* Create & register user data.
+* @param     socket     [IN] socket related to user data.
+* @param     userData        [OUT] initiated user data.
+*/
+void initiateUserData(SOCKET socket, UserData* userData) {
+	userData->status = 0;
+	userData->socket = socket;
+	registerUserData(userData);
+}
+
+/*
+* Add the specified user data to the tracked list.
+* @param     userData    [OUT] The specified room.
+*/
+void registerUserData(UserData* userData) {
+	for (int i = 0; i < 2*MAX_ROOMS; i++) {
+		if (!userDatas[i]) {
+			userDatas[i] = userData;
+			return;
+		}
+	}
 }
 
 /*
@@ -401,22 +466,32 @@ void processLogout(char* response, char* state) {
 	strcpy(response, (char*)LOGOUT_SUCCESS);
 }
 
-unsigned __stdcall processRequestThread(void* arg) {
+unsigned __stdcall processRequestThread(void* args) {
 
-	char buff[BUFF_SIZE];
+	char buff[BUFF_SIZE]; // "buff" is a pointer.
 	int ret;
-	SOCKET connSock = (SOCKET)arg;
-	bool processStatus;
-	char* state = (char*)malloc(DATA_MAX_SIZE * sizeof(char));
+	UserData* userData = (UserData*)args;
+	SOCKET connSock = (SOCKET)userData->socket;
+
+	bool counter = false; // TEMP.
 
 	while (1) {
 		ret = recv(connSock, buff, BUFF_SIZE, 0);
 		if (ret < 0) printf("Socket '%d' closed\n", connSock);
 		else {
-			buff[ret] = 0; /* '\0': Null terminator (NUL) is a control character with the value 0. */
+			buff[ret] = 0; // NOTE: '\0' (Null terminator, NUL) is a control character with the value 0.
+			cout << "from client: " << buff << endl;
+			
+			if (!counter) { // TEMP.
+				userData->username = (char*)malloc(MAX_USERNAME_SIZE * sizeof(char));
+				strcpy(userData->username, buff);
+				counter = true;
+			}
+
+			cout << "username: " << userData->username << endl;
+			cout << "status: " << userData->status;
+
 			char* response = (char*)malloc(RESPONSE_SIZE * sizeof(char));
-			processStatus = processRequest(buff, response, state);
-			if (!processStatus) break;
 			ret = send(connSock, response, ret, 0);
 			if (ret < 0) {
 				if (ret < 0) printf("Socket '%d' closed\n", connSock);
@@ -427,6 +502,38 @@ unsigned __stdcall processRequestThread(void* arg) {
 	closesocket(connSock);
 	printf("Connection closed - Socket '%d' \n", connSock);
 	return 0;
+}
+
+/*
+* Add the specified room to the tracked list.
+* @param     room    [OUT] The specified room.
+*/
+void registerRoom(Room* room) {
+	for (int i = 0; i < MAX_ROOMS; i++) {
+		if (!rooms[i]) {
+			rooms[i] = room; // NOTE: could use "tests[1] = &(*room)";
+			return;
+		}
+	}
+}
+
+/*
+* Generate room ID.
+*/
+int getRoomID() {
+	return ++roomIDGenerator;
+}
+
+/*
+* Create & register room 
+* @param     players     [IN] room players.
+* @param     sockets     [IN] sockets related to room players.
+* @param     room        [OUT] initiated room.
+*/
+void initiateRoom(Competitor* competitors, Room* room) {
+	room->id = getRoomID();
+	room->competitors = competitors;
+	registerRoom(room);
 }
 
 
