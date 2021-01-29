@@ -10,7 +10,7 @@
 // open mysql admin button --> phpmyadmin --> create a database named: "caro_winsock_server" 
 // see more info in the init function()
 
-// when you start running and it gives error ".dll not found", just go to dependencies/lib ...
+// when you start running and it gives error ".dll not found", just go to the folder /dependencies/lib ...
 // ... copy the that .dll file and place it next to the .exe file in the Debug folder
 
 #include <mysql.h>
@@ -35,8 +35,10 @@ private:
 
 public:
 	static DatabaseOp& getInstance();
-	void getOnlineAccounts();
 	void closeConnect();
+	void getRankList(std::string username);   // get suitable users from the database
+	int createAccount(std::string username, std::string password); // = 0 success or else failed
+	int logIn(std::string username, std::string password); // == 0 success or else failed
 };
 
 

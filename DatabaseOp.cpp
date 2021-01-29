@@ -14,7 +14,6 @@ using namespace std;
 DatabaseOp DatabaseOp::theInstance;
 
 DatabaseOp::DatabaseOp() {
-	cout << "databaseOp object initing" << endl; // testing if the program really call this function
 	init();
 }
 
@@ -52,6 +51,27 @@ void DatabaseOp::init() {
 	this->testShowTables();
 }
 
+void DatabaseOp::testShowTables() {
+	cout << "showing all tables in database " << DATABASE << endl;
+	this->executeQuery(this->connect, "SELECT * FROM test_table");
+}
+
+void DatabaseOp::closeConnect() {
+	mysql_close(this->connect);
+}
+
+void DatabaseOp::getRankList(string username) {
+
+}
+
+int DatabaseOp::createAccount(string username, string password) {
+
+}
+
+int DatabaseOp::logIn(string username, string password) {
+
+}
+
 void DatabaseOp::executeQuery(MYSQL* connect, string query) {
 
 	MYSQL_RES* res_set; //Result set object to store output table from the query
@@ -67,23 +87,10 @@ void DatabaseOp::executeQuery(MYSQL* connect, string query) {
 	while (((row = mysql_fetch_row(res_set)) != NULL)) // fetch each row one by one from the result set
 	{
 		i = 0;
-		while (i < num_col) { // print every row
-			cout << row[i] << " ";  //cells are separated by space
+		while (i < num_col) { // every cell in a row
+			cout << row[i] << " ";  // cells are separated by space
 			i++;
 		}
-		cout << endl; // print a new line after printing a row
+		cout << endl;
 	}
-}
-
-void DatabaseOp::testShowTables() {
-	cout << "showing all tables in database " << DATABASE << endl;
-	this->executeQuery(this->connect, "SELECT * FROM test_table");
-}
-
-void DatabaseOp::getOnlineAccounts() {
-
-}
-
-void DatabaseOp::closeConnect() {
-	mysql_close(this->connect);
 }
