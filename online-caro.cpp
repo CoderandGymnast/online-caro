@@ -67,7 +67,10 @@ unsigned __stdcall processRequestThread(void* arg);
 Account* accountDB;
 #define DB_PATH "./account.txt"
 
-#define MAX_ROOMS 10
+#include <thread>
+#include <ctime>
+
+#define MAX_ROOMS 1
 #define MAX_USERNAME_SIZE 255
 
 using namespace std;
@@ -78,7 +81,7 @@ struct Competitor {
 };
 
 struct Room {
-	int id; // NOTE: considering...
+	int status; // 0: gaming, 1: out.
 	int turn; // {0; 1}
 	Competitor *competitors;
 	int* map[3][3];
@@ -95,20 +98,31 @@ struct UserData {
 
 // function declarations:
 void registerRoom(Room* room);
-int getRoomID();
-void initiateRoom(Competitor* competitors, Room* room);
-void initiateUserData(SOCKET socket, UserData* userData);
-void registerUserData(UserData* userData);
+//int getRoomID();
+void initRoom(Competitor* competitors, Room* room);
+int initUserData(SOCKET socket, UserData* userData);
+int registerUserData(UserData* userData);
+void worker();
+void initLists();
+void log(string message);
+void toClient(char* m, SOCKET socket);
+void processFullSlots(SOCKET socket);
 
-Room* rooms[MAX_ROOMS];
-int roomIDGenerator = 0;
+Room* rooms;
+//int roomIDGenerator = 0;
 
-UserData* userDatas[2 * MAX_ROOMS];
+UserData* userDatas;
+
+int loggerCounter = 0;
 
 int main(int argc, TCHAR* argv[]) {	
 
-	writeAccountsToBuffer();
-	printBuffer();
+	initLists();
+
+	thread deamon(worker);
+
+	//writeAccountsToBuffer();
+	//printBuffer();
 
 	u_short SERVER_PORT = atoi(argv[1]);
 
@@ -163,7 +177,11 @@ int main(int argc, TCHAR* argv[]) {
 		printf("Connected socket: %d\n", connSock);
 
 		UserData* userData = (UserData*)malloc(sizeof(UserData));
-		initiateUserData(connSock, userData);
+		int res = initUserData(connSock, userData);
+		if (!res) {
+			processFullSlots(connSock);
+			continue;
+		}
 
 		/*
 		* Create a thread: 1 thread/client.
@@ -181,27 +199,52 @@ int main(int argc, TCHAR* argv[]) {
 }
 
 /*
+* process in case slots are full.
+*/
+void processFullSlots(SOCKET socket) {
+	char* m = (char*)"error: slots are full";
+	log(m);
+	closesocket(socket);
+}
+
+/*
+* Send message to the specified client.
+* @param     m          [IN] message.
+* @param     socket     [IN] socket related to the client.
+*/
+void toClient(char* m, SOCKET socket) {
+	int res = send(socket, m, strlen(m), 0);
+	if (res < 0) log("could not send. Socket closed" + socket);
+}
+
+/*
 * Create & register user data.
 * @param     socket     [IN] socket related to user data.
-* @param     userData        [OUT] initiated user data.
+* @param     userData   [OUT] initiated user data.
+* 
+* @return               only return 0 in case slots are full.
 */
-void initiateUserData(SOCKET socket, UserData* userData) {
+int initUserData(SOCKET socket, UserData* userData) {
 	userData->status = 0;
 	userData->socket = socket;
-	registerUserData(userData);
+	return registerUserData(userData);
 }
 
 /*
 * Add the specified user data to the tracked list.
 * @param     userData    [OUT] The specified room.
+* 
+* @return                only return 0 in case slots are full.
 */
-void registerUserData(UserData* userData) {
+int registerUserData(UserData* userData) {
 	for (int i = 0; i < 2*MAX_ROOMS; i++) {
-		if (!userDatas[i]) {
-			userDatas[i] = userData;
-			return;
+		if (userDatas[i].status != 0 && 1 && 2) {
+			userDatas[i] = *userData;
+			log("register user ID: " + to_string(i));
+			return 1;
 		}
 	}
+	return 0;
 }
 
 /*
@@ -504,14 +547,18 @@ unsigned __stdcall processRequestThread(void* args) {
 	return 0;
 }
 
+void processRequest() {
+
+}
+
 /*
 * Add the specified room to the tracked list.
 * @param     room    [OUT] The specified room.
 */
 void registerRoom(Room* room) {
 	for (int i = 0; i < MAX_ROOMS; i++) {
-		if (!rooms[i]) {
-			rooms[i] = room; // NOTE: could use "tests[1] = &(*room)";
+		if (rooms[i].status != 0 & 1) { // NOTE: rooms[i] is an actual value. &rooms[i] is address of rooms[i] in memory space (RAM).
+			rooms[i] = *room; // NOTE: Assign value pointed by "room" pointer to rooms[i].
 			return;
 		}
 	}
@@ -520,9 +567,9 @@ void registerRoom(Room* room) {
 /*
 * Generate room ID.
 */
-int getRoomID() {
-	return ++roomIDGenerator;
-}
+//int getRoomID() {
+//	return ++roomIDGenerator;
+//}
 
 /*
 * Create & register room 
@@ -530,15 +577,37 @@ int getRoomID() {
 * @param     sockets     [IN] sockets related to room players.
 * @param     room        [OUT] initiated room.
 */
-void initiateRoom(Competitor* competitors, Room* room) {
-	room->id = getRoomID();
+void initRoom(Competitor* competitors, Room* room) {
 	room->competitors = competitors;
 	registerRoom(room);
 }
 
+/*
+* Check rooms & user data lists to execute operations.
+*/
+void worker() {
+	while (1) {
+		Sleep(100);
+		for (int i = 0; i < 2 * MAX_ROOMS; i++) {
+			//cout << userDatas[i].status << endl;
+		}
+		/*for (UserData *userData : userDatas) {
+			cout << userData->status << endl;
+			if (!userData->status) cout << "0";
+		}*/
+	}
+}
 
+void initLists() {
+	userDatas = (UserData*)malloc(2 * MAX_ROOMS * sizeof(UserData));
+	rooms = (Room*)malloc(MAX_ROOMS * sizeof(Room));
+}
 
-
+void log(string message) {
+	time_t now = time(0);
+	char* dt = ctime(&now);
+	cout << ++loggerCounter << ". " << dt << message  << endl;
+}
 
 
 
