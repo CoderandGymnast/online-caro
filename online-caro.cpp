@@ -241,7 +241,7 @@ void writeAccountsToBuffer() {
 
 	FILE* file;
 	file = fopen(DB_PATH, "r");
-	if (!file) printf("[Error]: Could not access the database (this is a test database using / disable this later - in main() line 238).\n");
+	if (!file) printf("[Error]: Could not access the database (this is a test database using file / disable this later - in main() line 238).\n");
 
 	bool isFirstRecord = true;
 	Account* account;

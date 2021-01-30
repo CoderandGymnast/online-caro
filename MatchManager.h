@@ -9,9 +9,9 @@ private:
 	// private constructor prevent creating object from outside this class
 	// because creating object outside try to access the private constructor --> error
 	MatchManager();
+	void init();
 
 public:
-	void init();
 	static MatchManager& getInstance();
 	void createRoom();
 	void manageScore();

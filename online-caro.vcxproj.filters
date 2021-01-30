@@ -33,6 +33,12 @@
     <ClCompile Include="DatabaseOp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="TableDatas.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="UserInfo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CommunicationManager.h">
@@ -48,6 +54,12 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="DatabaseOp.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TableDatas.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="UserInfo.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

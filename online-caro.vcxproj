@@ -148,6 +148,8 @@
     <ClCompile Include="MatchManager.cpp" />
     <ClCompile Include="online-caro.cpp" />
     <ClCompile Include="ResultManager.cpp" />
+    <ClCompile Include="TableDatas.cpp" />
+    <ClCompile Include="UserInfo.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AccountManager.h" />
@@ -155,6 +157,8 @@
     <ClInclude Include="DatabaseOp.h" />
     <ClInclude Include="MatchManager.h" />
     <ClInclude Include="ResultManager.h" />
+    <ClInclude Include="TableDatas.h" />
+    <ClInclude Include="UserInfo.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

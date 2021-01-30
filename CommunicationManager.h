@@ -9,9 +9,9 @@ private:
 	// private constructor prevent creating object from outside this class
 	// because creating object outside try to access the private constructor --> error
 	CommunicationManager();
+	void init();
 
 public:
-	void init();
 	static CommunicationManager& getInstance();
 };
 
