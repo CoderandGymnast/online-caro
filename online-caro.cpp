@@ -20,10 +20,19 @@
 #pragma comment (lib, "Ws2_32.lib")
 
 #define SERVER_ADDR "127.0.0.1"
-#define BUFF_SIZE 2048
+#define BUFF_SIZE 1024
 #define MAX_ROOMS 1
 #define MAX_USERNAME_SIZE 255
 #define RESPONSE_SIZE 2048
+#define CODE_SIZE 2
+
+#define BAD_REQUEST "400: Bad Request"
+#define OK "200: OK"
+
+#define STATUS_LOGGED_IN 1
+#define STATUS_CHALLENGING 2
+
+#define CHALLENGING "30"
 
 using namespace std;
 
@@ -42,7 +51,7 @@ struct Room {
 };
 
 struct UserData {
-	int status; // 0: no operation. 1: challenging. 2: challenged. 3: gaming.
+	int status; // 0: , 1: logged in 1: challenging, 2: challenged, 3: gaming.
 	char* username;
 	SOCKET socket;
 	Room* room;
@@ -57,9 +66,12 @@ int initUserData(SOCKET socket, UserData* userData);
 int registerUserData(UserData* userData);
 void worker();
 void initLists();
-void log(string message);
+void log(string m);
 void toClient(char* m, SOCKET socket);
 void processFullSlots(SOCKET socket);
+void processRequest(char* m, UserData* userData, char* res);
+void getCode(char* m, char* code, char* meta);
+void processChallengingRequest(char* meta, UserData* userData, char* res);
 
 Room* rooms;
 UserData* userDatas;
@@ -186,7 +198,7 @@ int registerUserData(UserData* userData) {
 	for (int i = 0; i < 2*MAX_ROOMS; i++) {
 		if (userDatas[i].status != 0 && 1 && 2) {
 			userDatas[i] = *userData;
-			log("register user ID: " + to_string(i));
+			log("register client ID: " + to_string(i));
 			return 1;
 		}
 	}
@@ -199,6 +211,7 @@ unsigned __stdcall processRequestThread(void* args) {
 	int ret;
 	UserData* userData = (UserData*)args;
 	SOCKET connSock = (SOCKET)userData->socket;
+	char* res = (char*) malloc(RESPONSE_SIZE * sizeof(char));
 
 	bool counter = false; // TEMP.
 
@@ -208,18 +221,23 @@ unsigned __stdcall processRequestThread(void* args) {
 		else {
 			buff[ret] = 0; // NOTE: '\0' (Null terminator, NUL) is a control character with the value 0.
 			cout << "from client: " << buff << endl;
+
+			if (userData->status) { // NOTE: Must logged in for further features.
+				processRequest(buff, userData, res);
+			}
 			
 			if (!counter) { // TEMP.
 				userData->username = (char*)malloc(MAX_USERNAME_SIZE * sizeof(char));
 				strcpy(userData->username, buff);
+				userData->status = STATUS_LOGGED_IN;
+				string username = userData->username;
+				log("account '" + username + "' logged in");
 				counter = true;
+				strcpy(res, OK);
 			}
 
-			cout << "username: " << userData->username << endl;
-			cout << "status: " << userData->status;
-
-			char* response = (char*)malloc(RESPONSE_SIZE * sizeof(char));
-			ret = send(connSock, response, ret, 0);
+			log("response: '" + (string)res + "' - size: '" + to_string(strlen(res)) + "'");
+			ret = send(connSock, res, strlen(res), 0); // NOTE: could not send too large data.
 			if (ret < 0) {
 				if (ret < 0) printf("Socket '%d' closed\n", connSock);
 			}
@@ -231,9 +249,59 @@ unsigned __stdcall processRequestThread(void* args) {
 	return 0;
 }
 
-void processRequest() {
+/*
+* Proces client request.
+* @param     m        [IN] request message.
+* @param	 userData [IN] client user data.
+* @param     res      [OUT] response.
+*/
+void processRequest(char* m, UserData* userData, char* res) {
 
+	char* code = (char*)malloc(CODE_SIZE * sizeof(char));
+	char* meta = (char*)malloc((strlen(m) - CODE_SIZE) * sizeof(char));
+	getCode(m, code, meta);
+
+	if (!strcmp(code, CHALLENGING))	 {
+		processChallengingRequest(meta, userData, res);
+	}
 }
+
+/*
+* Proces client challenging request.
+* @param     m        [IN] request message.
+* @param	 userData [IN] client user data.
+* @param     res      [OUT] response.
+*/
+void processChallengingRequest(char* meta, UserData* userData, char* res) {
+
+	int status = userData->status;
+	if (status != STATUS_LOGGED_IN) {
+		strcpy(res, BAD_REQUEST);
+		log((string)res);
+		log("error: could not 'challenging' - user data status '" + to_string(status) + "'");
+		return;
+	}
+
+	userData->status = STATUS_CHALLENGING;
+	log("'" + (string)userData->username + "' challenging '" + (string)meta + "'");
+}
+
+/*
+* Get code from client request.
+* @param     m    [IN] request message.
+* @param     code [OUT] request code.
+*/
+void getCode(char* m, char* code, char* meta) {
+	int mSize = strlen(m);
+	strncpy(code , m, CODE_SIZE);
+	strncpy(meta, &(*(m + CODE_SIZE)), mSize - CODE_SIZE);
+	code[CODE_SIZE] = 0;
+	meta[mSize - CODE_SIZE] = 0;
+	log("code: " + (string) code + " - size: " + to_string(sizeof(code)/sizeof(char)));
+	log("meta: " + (string)meta + " - size: " + to_string(sizeof(meta) / sizeof(char)));
+}
+
+
 
 /*
 * Add the specified room to the tracked list.
@@ -275,10 +343,10 @@ void initLists() {
 	rooms = (Room*)malloc(MAX_ROOMS * sizeof(Room));
 }
 
-void log(string message) {
+void log(string m) {
 	time_t now = time(0);
 	char* dt = ctime(&now);
-	cout << ++loggerCounter << ". " << dt << message  << endl;
+	cout << ++loggerCounter << ". " << dt << m << endl;
 }
 
 
