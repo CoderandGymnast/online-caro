@@ -28,6 +28,7 @@
 
 #define BAD_REQUEST "400: Bad Request"
 #define OK "200: OK"
+#define NOT_FOUND "404: Not Found"
 
 #define STATUS_LOGGED_IN 1
 #define STATUS_CHALLENGING 2
@@ -72,6 +73,7 @@ void processFullSlots(SOCKET socket);
 void processRequest(char* m, UserData* userData, char* res);
 void getCode(char* m, char* code, char* meta);
 void processChallengingRequest(char* meta, UserData* userData, char* res);
+void processRequestNotFound(char* res);
 
 Room* rooms;
 UserData* userDatas;
@@ -220,7 +222,7 @@ unsigned __stdcall processRequestThread(void* args) {
 		if (ret < 0) printf("Socket '%d' closed\n", connSock);
 		else {
 			buff[ret] = 0; // NOTE: '\0' (Null terminator, NUL) is a control character with the value 0.
-			cout << "from client: " << buff << endl;
+			printf("client socket '%d': '%s'\n", connSock, buff);
 
 			if (userData->status) { // NOTE: Must logged in for further features.
 				processRequest(buff, userData, res);
@@ -250,7 +252,7 @@ unsigned __stdcall processRequestThread(void* args) {
 }
 
 /*
-* Proces client request.
+* Process client request.
 * @param     m        [IN] request message.
 * @param	 userData [IN] client user data.
 * @param     res      [OUT] response.
@@ -264,6 +266,17 @@ void processRequest(char* m, UserData* userData, char* res) {
 	if (!strcmp(code, CHALLENGING))	 {
 		processChallengingRequest(meta, userData, res);
 	}
+	else {
+		processRequestNotFound(res);
+	}
+}
+
+/*
+* Process client request.
+* @param     res      [OUT] response.
+*/
+void processRequestNotFound(char* res) {
+	strcpy(res, NOT_FOUND);
 }
 
 /*
@@ -283,6 +296,7 @@ void processChallengingRequest(char* meta, UserData* userData, char* res) {
 	}
 
 	userData->status = STATUS_CHALLENGING;
+	strcpy(res, OK);
 	log("'" + (string)userData->username + "' challenging '" + (string)meta + "'");
 }
 
