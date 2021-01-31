@@ -79,9 +79,9 @@ void initLists();
 void log(string m);
 void toClient(char* m, SOCKET socket);
 void processFullSlots(SOCKET socket);
-void processRequest(char* m, UserData* userData, char* res);
+void processRequest(char* m, int i, char* res);
 void getCode(char* m, char* code, char* meta);
-void processChallengingRequest(char* meta, UserData* userData, char* res);
+void processChallengingRequest(char* meta, int i, char* res);
 void processRequestNotFound(char* res);
 void processChallengingStatus(int i);
 void processChallengedStatus(int i);
@@ -191,7 +191,7 @@ unsigned __stdcall processRequestThread(void* args) {
 			printf("client socket '%d': '%s'\n", connSock, buff);
 
 			if (userData->status) { // NOTE: Must logged in for further features.
-				processRequest(buff, userData, res);
+				processRequest(buff, *slot, res);
 			}
 			
 			if (!counter) { // TEMP.
@@ -259,17 +259,17 @@ int attachUserData(SOCKET socket, int* slot) {
 /*
 * Process client request.
 * @param     m        [IN] request message.
-* @param	 userData [IN] client user data.
+* @param	 i		  [IN] slot index.
 * @param     res      [OUT] response.
 */
-void processRequest(char* m, UserData* userData, char* res) {
+void processRequest(char* m, int i, char* res) {
 
 	char* code = (char*)malloc(CODE_SIZE * sizeof(char));
 	char* meta = (char*)malloc((strlen(m) - CODE_SIZE) * sizeof(char));
 	getCode(m, code, meta);
 
 	if (!strcmp(code, CHALLENGING))	 {
-		processChallengingRequest(meta, userData, res);
+		processChallengingRequest(meta, i, res);
 	}
 	else {
 		processRequestNotFound(res);
@@ -287,11 +287,12 @@ void processRequestNotFound(char* res) {
 /*
 * Proces client challenging request.
 * @param     m        [IN] request message.
-* @param	 userData [IN] client user data.
+* @param	 i        [IN] slot index.
 * @param     res      [OUT] response.
 */
-void processChallengingRequest(char* meta, UserData* userData, char* res) {
+void processChallengingRequest(char* meta, int i, char* res) {
 
+	UserData* userData = &(userDatas[i]);
 	int status = userData->status;
 	if (status != STATUS_LOGGED_IN) {
 		strcpy(res, BAD_REQUEST);
@@ -306,6 +307,10 @@ void processChallengingRequest(char* meta, UserData* userData, char* res) {
 	strcpy(userData->meta, meta);
 	strcpy(res, OK);
 	log("'" + (string)userData->username + "' challenging '" + (string)meta + "'");
+}
+
+void processAcceptingRequest() {
+
 }
 
 /*
