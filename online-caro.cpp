@@ -37,6 +37,11 @@
 #define STATUS_CHALLENGED 3
 #define STATUS_GAMING 4
 
+#define STATUS_OPERATION_CLOSED 0
+#define STATUS_OPERATION_OPENED 1
+#define STATUS_OPERATION_ACCEPTED 2
+#define STATUS_OPERATION_DENIED 3
+
 #define CHALLENGING "30"
 
 using namespace std;
@@ -242,7 +247,7 @@ int attachUserData(SOCKET socket, int* slot) {
 		if (!(STATUS_ATTACHED <= userDatas[i].status && userDatas[i].status <= STATUS_GAMING)) {
 			userDatas[i].status = STATUS_ATTACHED;
 			userDatas[i].socket = socket;
-			userDatas[i].operationStatus = 0;
+			userDatas[i].operationStatus = STATUS_OPERATION_CLOSED;
 			*slot = i;
 			log("ID: '" + to_string(i) + "' attached");
 			return 1;
@@ -354,7 +359,7 @@ void worker() {
 			if (userDatas[i].status == STATUS_CHALLENGING) {
 				processChallengingStatus(i);
 			}
-			else if (userDatas[i].status == 3 ) {
+			else if (userDatas[i].status == STATUS_CHALLENGED ) {
 				processChallengedStatus(i);
 			}
 			else if (userDatas[i].status == 4) {
@@ -376,14 +381,17 @@ void processChallengingStatus(int i) {
 
 	int res = find(challenger->meta);
 	if (res == -1) {
-		challenger->status = 1; // NOTE: reset user data's status to be able to challenge others.
-		log("error: not found '" + (string)userDatas[i].meta + "'");
+		challenger->status = STATUS_LOGGED_IN; // NOTE: reset user data's status to be able to challenge others.
+		log("error: not found '" + (string)challenger->meta + "'");
 	}
 	else {
 		UserData* competitor = &(userDatas[res]);
-		if (competitor->status == 1) {
+		if (competitor->status == STATUS_LOGGED_IN) {
 			log("competitor: '" + (string)competitor->username + "'");
 			competitor->status = STATUS_CHALLENGED;
+			competitor->operationStatus = STATUS_OPERATION_OPENED;
+			competitor->meta = (char*)malloc(strlen(challenger->username) * sizeof(char));
+			strcpy(competitor->meta, challenger->username);
 		}
 		else { // TODO: Could not challenge itsself because status is changed to STATUS_CHALLENGING.
 			challenger->status = 1; // NOTE: reset user data's status to be able to challenge others.
@@ -391,7 +399,7 @@ void processChallengingStatus(int i) {
 		}
 	}
 
-	userDatas[i].operationStatus = 0;
+	userDatas[i].operationStatus = STATUS_OPERATION_CLOSED;
 }
 
 /*
@@ -400,6 +408,21 @@ void processChallengingStatus(int i) {
 */
 void processChallengedStatus(int i) {
 
+	UserData* competitor = &(userDatas[i]);
+	if (competitor->operationStatus == STATUS_OPERATION_OPENED) {
+		// TODO: Send to competitor 30<challenger username>.
+		printf("[DEBUG]: send '30%s' to client with Socket '%d'\n", userDatas[i].meta, userDatas[i].socket);
+		competitor->operationStatus = STATUS_OPERATION_CLOSED;
+	}
+	else if (competitor->operationStatus == STATUS_OPERATION_ACCEPTED) {
+
+	}
+	else if (competitor->operationStatus == STATUS_OPERATION_DENIED) {
+
+	}
+	else {
+		log("error: nonsense");
+	}
 }
 
 /*
