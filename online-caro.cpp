@@ -21,7 +21,7 @@
 
 #define SERVER_ADDR "127.0.0.1"
 #define BUFF_SIZE 1024
-#define MAX_ROOMS 1
+#define MAX_ROOMS 2
 #define MAX_USERNAME_SIZE 255
 #define RESPONSE_SIZE 2048
 #define CODE_SIZE 2
@@ -60,7 +60,8 @@ struct UserData {
 	char* username;
 	SOCKET socket;
 	Room* room;
-	char* metas;
+	int operationStatus; // 0: done / nothing, 1: open.
+	char* meta;
 };
 
 /* function declaration: */
@@ -80,6 +81,8 @@ void processRequestNotFound(char* res);
 void processChallengingStatus(int i);
 void processChallengedStatus(int i);
 void processGamingStatus(int i);
+int find(char* username);
+int isLoggedIn(int i);
 
 Room* rooms;
 UserData* userDatas;
@@ -239,6 +242,7 @@ int attachUserData(SOCKET socket, int* slot) {
 		if (!(STATUS_ATTACHED <= userDatas[i].status && userDatas[i].status <= STATUS_GAMING)) {
 			userDatas[i].status = STATUS_ATTACHED;
 			userDatas[i].socket = socket;
+			userDatas[i].operationStatus = 0;
 			*slot = i;
 			log("ID: '" + to_string(i) + "' attached");
 			return 1;
@@ -292,8 +296,9 @@ void processChallengingRequest(char* meta, UserData* userData, char* res) {
 	}
 
 	userData->status = STATUS_CHALLENGING;
-	userData->metas = (char*)malloc(strlen(meta) * sizeof(char));
-	strcpy(userData->metas, meta);
+	userData->operationStatus = 1;
+	userData->meta = (char*)malloc(strlen(meta) * sizeof(char));
+	strcpy(userData->meta, meta);
 	strcpy(res, OK);
 	log("'" + (string)userData->username + "' challenging '" + (string)meta + "'");
 }
@@ -345,6 +350,7 @@ void initRoom(Competitor* competitors, Room* room) {
 void worker() {
 	while (1) {
 		for (int i = 0; i < 2 * MAX_ROOMS; i++) {
+			if (!userDatas[i].operationStatus) continue;
 			if (userDatas[i].status == STATUS_CHALLENGING) {
 				processChallengingStatus(i);
 			}
@@ -363,7 +369,29 @@ void worker() {
 * @param     i    [IN]     the index of user data on the list.
 */
 void processChallengingStatus(int i) {
-	
+
+	log("[FIX BUG]: server down");
+
+	UserData* challenger = &(userDatas[i]);
+
+	int res = find(challenger->meta);
+	if (res == -1) {
+		challenger->status = 1; // NOTE: reset user data's status to be able to challenge others.
+		log("error: not found '" + (string)userDatas[i].meta + "'");
+	}
+	else {
+		UserData* competitor = &(userDatas[res]);
+		if (competitor->status == 1) {
+			log("competitor: '" + (string)competitor->username + "'");
+			competitor->status = STATUS_CHALLENGED;
+		}
+		else { // TODO: Could not challenge itsself because status is changed to STATUS_CHALLENGING.
+			challenger->status = 1; // NOTE: reset user data's status to be able to challenge others.
+			log("error: could not challenged '" + (string)competitor->username + "'");
+		}
+	}
+
+	userDatas[i].operationStatus = 0;
 }
 
 /*
@@ -380,6 +408,30 @@ void processChallengedStatus(int i) {
 */
 void processGamingStatus(int i) {
 
+}
+
+/*
+* Find user data index (only find logged-in user data).
+* @param     username    [IN]     username of user data.
+* 
+* @return                         -1: not found.
+*/
+int find(char* username) {
+	for (int i = 0; i < 2 * MAX_ROOMS; i++) {
+		if (!isLoggedIn(i)) continue;
+		if (!strcmp(userDatas[i].username, username)) return i;
+	}
+	return -1;
+}
+
+/*
+* check logged in status.
+* @param     i    [IN]     the index of user data on the list.
+* 
+* @return                  0: not logged in, 1: logged in.
+*/
+int isLoggedIn(int i) {
+	return (STATUS_LOGGED_IN <= userDatas[i].status && userDatas[i].status <= STATUS_GAMING) ? 1 : 0;
 }
 
 void initLists() {
