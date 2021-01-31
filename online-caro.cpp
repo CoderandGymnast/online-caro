@@ -26,6 +26,7 @@
 #define RESPONSE_SIZE 2048
 #define CODE_SIZE 2
 #define ROOM_CAPACITY 2
+#define MOVE_SIZE 2
 
 #define BAD_REQUEST "400: Bad Request"
 #define OK "200: OK"
@@ -48,6 +49,9 @@
 #define STATUS_ROOM_GAMING 0
 #define STATUS_ROOM_OUT 1
 
+#define STATUS_MOVE_CLOSED 0
+#define STATUS_MOVE_OPENED 1
+
 #define CHALLENGING "30"
 #define ACCEPTED "31"
 
@@ -67,7 +71,8 @@ struct Room {
 	Competitor *challenger;
 	Competitor* competitor;
 	int* map[3][3];
-	int* move[2];
+	int moveStatus; // 0: closed, 1: opened.
+	char* move;
 };
 
 struct UserData {
@@ -295,12 +300,12 @@ void processRequest(char* m, int i, char* res) {
 
 void processMovingRequest(char* meta, int i, char* res) {
 	UserData* userData = &(userDatas[i]);
-	cout << "0";
-	int roomStatus = userData->room->status;
-	cout << "1";
-	if (roomStatus == STATUS_ROOM_GAMING) {
+	Room* room = userData->room;
+	if (room->status == STATUS_ROOM_GAMING && userData->status == STATUS_GAMING) {
+		// TODO: track turn.
+		strcpy(room->move, meta);
+		room->moveStatus = STATUS_MOVE_OPENED;
 		res = (char*)OK;
-		log("'" + (string)userData->username + "' moves " + (string)meta);
 	}
 	else {
 		res = (char*) BAD_REQUEST;
@@ -388,6 +393,35 @@ void worker() {
 				processGamingStatus(i);
 			}
 		}
+		for (int i = 0; i < MAX_ROOMS; i++) {
+			if (!(STATUS_ROOM_GAMING <= rooms[i].status && rooms[i].status <= STATUS_ROOM_OUT)) continue;
+			if (rooms[i].status == STATUS_ROOM_OUT) {
+				// TODO: Free room.
+			}
+			else if (rooms[i].status == STATUS_ROOM_GAMING) {
+				if (rooms[i].moveStatus == STATUS_MOVE_CLOSED) continue;
+				int turn = rooms[i].turn;
+				Competitor* challenger = rooms[i].challenger;
+				Competitor* competitor = rooms[i].competitor;
+				if (turn == TURN_CHALLENGER) {
+					printf("[DEBUG]: send code:'40' - meta:'%s' to client with Socket '%d'\n", competitor->username, competitor->socket);
+					printf("'%s' moves '%s'\n", challenger->username, rooms[i].move);
+					rooms[i].turn = TURN_COMPETITOR;
+				}
+				else if (turn == TURN_COMPETITOR) {
+					printf("[DEBUG]: send code:'40' - meta:'%s' to client with Socket '%d'\n", challenger->username, challenger->socket);
+					printf("'%s' moves '%s'\n", competitor->username, rooms[i].move);
+					rooms[i].turn = TURN_CHALLENGER;
+				}
+				else {
+					log("error: nonsence turn");
+				}
+				rooms[i].moveStatus = STATUS_MOVE_CLOSED;
+			}
+			else {
+				log("error: nonsense room status");
+			}
+		}
 	}
 } 
 
@@ -447,7 +481,7 @@ void processChallengedStatus(int i) {
 			room->turn = TURN_CHALLENGER;
 			Competitor* roomCompetitor = (Competitor*)malloc(sizeof(Competitor));
 			roomCompetitor->username = (char*)malloc(strlen(competitor->username) * sizeof(char));
-			strcmp(roomCompetitor->username, competitor->username);
+			strcpy(roomCompetitor->username, competitor->username);
 			roomCompetitor->socket = competitor->socket;
 			Competitor* roomChallenger = (Competitor*)malloc(sizeof(Competitor));
 			int challengerI = find(competitor->meta);
@@ -458,10 +492,13 @@ void processChallengedStatus(int i) {
 			else {
 
 				UserData* challenger = &(userDatas[challengerI]);
-				roomChallenger->username = challenger->username;
+				roomChallenger->username = (char*)malloc(strlen(challenger->username) * sizeof(char));
+				strcpy(roomChallenger->username, challenger->username);
 				roomChallenger->socket = challenger->socket;
 				room->challenger = roomChallenger;
 				room->competitor = roomCompetitor;
+				room->moveStatus = STATUS_MOVE_CLOSED;
+				room->move = (char*)malloc(MOVE_SIZE*sizeof(char));
 
 				competitor->status = STATUS_GAMING;
 				challenger->status = STATUS_GAMING;
