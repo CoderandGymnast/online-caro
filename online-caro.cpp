@@ -43,6 +43,7 @@
 #define STATUS_OPERATION_DENIED 3
 
 #define CHALLENGING "30"
+#define ACCEPTED "31"
 
 using namespace std;
 
@@ -88,6 +89,7 @@ void processChallengedStatus(int i);
 void processGamingStatus(int i);
 int find(char* username);
 int isLoggedIn(int i);
+void processAcceptingRequest(int i, char* res);
 
 Room* rooms;
 UserData* userDatas;
@@ -271,6 +273,9 @@ void processRequest(char* m, int i, char* res) {
 	if (!strcmp(code, CHALLENGING))	 {
 		processChallengingRequest(meta, i, res);
 	}
+	else if (!strcmp(code, ACCEPTED)) {
+		processAcceptingRequest(i, res);
+	}
 	else {
 		processRequestNotFound(res);
 	} // TODO: process logout request (free user data).
@@ -309,8 +314,19 @@ void processChallengingRequest(char* meta, int i, char* res) {
 	log("'" + (string)userData->username + "' challenging '" + (string)meta + "'");
 }
 
-void processAcceptingRequest() {
+void processAcceptingRequest(int i, char* res) {
 
+	UserData* userData = &(userDatas[i]);
+	int status = userData->status;
+	if (status != STATUS_CHALLENGED) {
+		strcpy(res, BAD_REQUEST);
+		log("error: could not 'accepting' - user data status '" + to_string(status) + "'");
+		return;
+	}
+
+	userData->operationStatus = STATUS_OPERATION_ACCEPTED;
+	strcpy(res, OK);
+	log("'" + (string)userData->username + "' accepts challenge '" + (string)userData->meta + "'");
 }
 
 /*
