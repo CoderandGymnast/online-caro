@@ -51,6 +51,8 @@
 #define CHALLENGING "30"
 #define ACCEPTED "31"
 
+#define MOVE "40"
+
 using namespace std;
 
 /* data structure definition: */
@@ -96,6 +98,7 @@ int find(char* username);
 int isLoggedIn(int i);
 void processAcceptingRequest(int i, char* res);
 int attachRoom();
+void processMovingRequest(char* meta, int i, char* res);
 
 Room* rooms;
 UserData* userDatas;
@@ -282,9 +285,27 @@ void processRequest(char* m, int i, char* res) {
 	else if (!strcmp(code, ACCEPTED)) {
 		processAcceptingRequest(i, res);
 	}
+	else if (!strcmp(code, MOVE)) {
+		processMovingRequest(meta, i, res);
+	}
 	else {
 		processRequestNotFound(res);
 	} // TODO: process logout request (free user data).
+}
+
+void processMovingRequest(char* meta, int i, char* res) {
+	UserData* userData = &(userDatas[i]);
+	cout << "0";
+	int roomStatus = userData->room->status;
+	cout << "1";
+	if (roomStatus == STATUS_ROOM_GAMING) {
+		res = (char*)OK;
+		log("'" + (string)userData->username + "' moves " + (string)meta);
+	}
+	else {
+		res = (char*) BAD_REQUEST;
+		log("error: '" + (string)userData->username + "' not in a room");
+	}
 }
 
 /*
@@ -444,6 +465,8 @@ void processChallengedStatus(int i) {
 
 				competitor->status = STATUS_GAMING;
 				challenger->status = STATUS_GAMING;
+				challenger->room = room;
+				competitor->room = room;
 			}
 
 		}
