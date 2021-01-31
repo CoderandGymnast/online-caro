@@ -42,6 +42,12 @@
 #define STATUS_OPERATION_ACCEPTED 2
 #define STATUS_OPERATION_DENIED 3
 
+#define TURN_CHALLENGER 0
+#define TURN_COMPETITOR 1
+
+#define STATUS_ROOM_GAMING 0
+#define STATUS_ROOM_OUT 1
+
 #define CHALLENGING "30"
 #define ACCEPTED "31"
 
@@ -56,7 +62,8 @@ struct Competitor {
 struct Room {
 	int status; // 0: gaming, 1: out.
 	int turn; // {0; 1}
-	Competitor *competitors;
+	Competitor *challenger;
+	Competitor* competitor;
 	int* map[3][3];
 	int* move[2];
 };
@@ -71,9 +78,7 @@ struct UserData {
 };
 
 /* function declaration: */
-void registerRoom(Room* room);
 unsigned __stdcall processRequestThread(void* arg);
-void initRoom(Competitor* competitors, Room* room);
 int attachUserData(SOCKET socket, int* slot);
 void worker();
 void initLists();
@@ -90,6 +95,7 @@ void processGamingStatus(int i);
 int find(char* username);
 int isLoggedIn(int i);
 void processAcceptingRequest(int i, char* res);
+int attachRoom();
 
 Room* rooms;
 UserData* userDatas;
@@ -344,32 +350,6 @@ void getCode(char* m, char* code, char* meta) {
 	log("meta: " + (string)meta + " - size: " + to_string(sizeof(meta) / sizeof(char)));
 }
 
-
-
-/*
-* Add the specified room to the tracked list.
-* @param     room    [OUT] The specified room.
-*/
-void registerRoom(Room* room) {
-	for (int i = 0; i < MAX_ROOMS; i++) {
-		if (rooms[i].status != 0 & 1) { // NOTE: rooms[i] is an actual value. &rooms[i] is address of rooms[i] in memory space (RAM).
-			rooms[i] = *room; // NOTE: Assign value pointed by "room" pointer to rooms[i].
-			return;
-		}
-	}
-}
-
-/*
-* Create & register room 
-* @param     players     [IN] room players.
-* @param     sockets     [IN] sockets related to room players.
-* @param     room        [OUT] initiated room.
-*/
-void initRoom(Competitor* competitors, Room* room) {
-	room->competitors = competitors;
-	registerRoom(room);
-}
-
 /*
 * Check rooms & user data lists to execute operations.
 */
@@ -420,7 +400,7 @@ void processChallengingStatus(int i) {
 		}
 	}
 
-	userDatas[i].operationStatus = STATUS_OPERATION_CLOSED;
+	challenger->operationStatus = STATUS_OPERATION_CLOSED;
 }
 
 /*
@@ -431,12 +411,42 @@ void processChallengedStatus(int i) {
 
 	UserData* competitor = &(userDatas[i]);
 	if (competitor->operationStatus == STATUS_OPERATION_OPENED) {
-		// TODO: Send to competitor 30<challenger username>.
-		printf("[DEBUG]: send '30%s' to client with Socket '%d'\n", userDatas[i].meta, userDatas[i].socket);
-		competitor->operationStatus = STATUS_OPERATION_CLOSED;
+		printf("[DEBUG]: send '30%s' to client with Socket '%d'\n", competitor->meta, competitor->socket);
 	}
 	else if (competitor->operationStatus == STATUS_OPERATION_ACCEPTED) {
+		int res = attachRoom();
+		if (res == -1) {
+			log("error: rooms are full");
+			printf("[DEBUG]: send '33 - rooms are full' to client with Socket '%d'\n", competitor->socket);
+			// TODO: Handle full rooms.
+		}
+		else {
+			Room* room = &(rooms[i]);
+			room->status = STATUS_ROOM_GAMING;
+			room->turn = TURN_CHALLENGER;
+			Competitor* roomCompetitor = (Competitor*)malloc(sizeof(Competitor));
+			roomCompetitor->username = (char*)malloc(strlen(competitor->username) * sizeof(char));
+			strcmp(roomCompetitor->username, competitor->username);
+			roomCompetitor->socket = competitor->socket;
+			Competitor* roomChallenger = (Competitor*)malloc(sizeof(Competitor));
+			int challengerI = find(competitor->meta);
+			if (challengerI == -1) {
+				log("error: not found challenger '" + (string)competitor->meta + "'");
+				// TODO: Handle more cases (challenger is offline, challenger not challenging anymore,...)
+			}
+			else {
 
+				UserData* challenger = &(userDatas[challengerI]);
+				roomChallenger->username = challenger->username;
+				roomChallenger->socket = challenger->socket;
+				room->challenger = roomChallenger;
+				room->competitor = roomCompetitor;
+
+				competitor->status = STATUS_GAMING;
+				challenger->status = STATUS_GAMING;
+			}
+
+		}
 	}
 	else if (competitor->operationStatus == STATUS_OPERATION_DENIED) {
 
@@ -444,6 +454,16 @@ void processChallengedStatus(int i) {
 	else {
 		log("error: nonsense");
 	}
+	competitor->operationStatus = STATUS_OPERATION_CLOSED;
+}
+
+int attachRoom() {
+	for (int i = 0; i < MAX_ROOMS; i++) {
+		if (!(0 <= rooms[i].status && rooms[i].status <= 1)) {
+			return i;
+		}
+	}
+	return -1;
 }
 
 /*
