@@ -25,13 +25,17 @@
 #define MAX_USERNAME_SIZE 255
 #define RESPONSE_SIZE 2048
 #define CODE_SIZE 2
+#define ROOM_CAPACITY 2
 
 #define BAD_REQUEST "400: Bad Request"
 #define OK "200: OK"
 #define NOT_FOUND "404: Not Found"
 
+#define STATUS_ATTACHED 0
 #define STATUS_LOGGED_IN 1
 #define STATUS_CHALLENGING 2
+#define STATUS_CHALLENGED 3
+#define STATUS_GAMING 4
 
 #define CHALLENGING "30"
 
@@ -56,15 +60,14 @@ struct UserData {
 	char* username;
 	SOCKET socket;
 	Room* room;
-	char* operation[2];
+	char* metas;
 };
 
 /* function declaration: */
 void registerRoom(Room* room);
 unsigned __stdcall processRequestThread(void* arg);
 void initRoom(Competitor* competitors, Room* room);
-int initUserData(SOCKET socket, UserData* userData);
-int registerUserData(UserData* userData);
+int attachUserData(SOCKET socket, int* slot);
 void worker();
 void initLists();
 void log(string m);
@@ -74,6 +77,9 @@ void processRequest(char* m, UserData* userData, char* res);
 void getCode(char* m, char* code, char* meta);
 void processChallengingRequest(char* meta, UserData* userData, char* res);
 void processRequestNotFound(char* res);
+void processChallengingStatus(int i);
+void processChallengedStatus(int i);
+void processGamingStatus(int i);
 
 Room* rooms;
 UserData* userDatas;
@@ -136,8 +142,8 @@ int main(int argc, TCHAR* argv[]) {
 		connSock = accept(listenSock, (sockaddr*)&clientAddr, &clientAddrLen);
 		printf("Connected socket: %d\n", connSock);
 
-		UserData* userData = (UserData*)malloc(sizeof(UserData));
-		int res = initUserData(connSock, userData);
+		int* slot = (int*) malloc(sizeof(int));
+		int res = attachUserData(connSock, slot);
 		if (!res) {
 			processFullSlots(connSock);
 			continue;
@@ -148,7 +154,7 @@ int main(int argc, TCHAR* argv[]) {
 		* "start_address" & "arglist".
 		* (?) initflag: https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/beginthread-beginthreadex?view=msvc-160
 		*/
-		_beginthreadex(0, 0, processRequestThread, (void*)userData, 0, 0);
+		_beginthreadex(0, 0, processRequestThread, (void*)slot, 0, 0);
 	}
 
 	closesocket(listenSock);
@@ -158,60 +164,12 @@ int main(int argc, TCHAR* argv[]) {
 	return 0;
 }
 
-/*
-* process in case slots are full.
-*/
-void processFullSlots(SOCKET socket) {
-	char* m = (char*)"error: slots are full";
-	log(m);
-	closesocket(socket);
-}
-
-/*
-* Send message to the specified client.
-* @param     m          [IN] message.
-* @param     socket     [IN] socket related to the client.
-*/
-void toClient(char* m, SOCKET socket) {
-	int res = send(socket, m, strlen(m), 0);
-	if (res < 0) log("could not send. Socket closed" + socket);
-}
-
-/*
-* Create & register user data.
-* @param     socket     [IN] socket related to user data.
-* @param     userData   [OUT] initiated user data.
-* 
-* @return               only return 0 in case slots are full.
-*/
-int initUserData(SOCKET socket, UserData* userData) {
-	userData->status = 0;
-	userData->socket = socket;
-	return registerUserData(userData);
-}
-
-/*
-* Add the specified user data to the tracked list.
-* @param     userData    [OUT] The specified room.
-* 
-* @return                only return 0 in case slots are full.
-*/
-int registerUserData(UserData* userData) {
-	for (int i = 0; i < 2*MAX_ROOMS; i++) {
-		if (userDatas[i].status != 0 && 1 && 2) {
-			userDatas[i] = *userData;
-			log("register client ID: " + to_string(i));
-			return 1;
-		}
-	}
-	return 0;
-}
-
 unsigned __stdcall processRequestThread(void* args) {
 
-	char buff[BUFF_SIZE]; // "buff" is a pointer.
+	char buff[BUFF_SIZE];
 	int ret;
-	UserData* userData = (UserData*)args;
+	int* slot = (int*)args;
+	UserData* userData = &(userDatas[*slot]);
 	SOCKET connSock = (SOCKET)userData->socket;
 	char* res = (char*) malloc(RESPONSE_SIZE * sizeof(char));
 
@@ -252,6 +210,44 @@ unsigned __stdcall processRequestThread(void* args) {
 }
 
 /*
+* process in case slots are full.
+*/
+void processFullSlots(SOCKET socket) {
+	char* m = (char*)"error: slots are full";
+	log(m);
+	closesocket(socket);
+}
+
+/*
+* Send message to the specified client.
+* @param     m          [IN] message.
+* @param     socket     [IN] socket related to the client.
+*/
+void toClient(char* m, SOCKET socket) {
+	int res = send(socket, m, strlen(m), 0);
+	if (res < 0) log("could not send. Socket closed" + socket);
+}
+
+/*
+* Add the specified user data to the tracked list.
+* @param     userData    [OUT] The specified room.
+*
+* @return                only return 0 in case slots are full.
+*/
+int attachUserData(SOCKET socket, int* slot) {
+	for (int i = 0; i < ROOM_CAPACITY * MAX_ROOMS; i++) {
+		if (!(STATUS_ATTACHED <= userDatas[i].status && userDatas[i].status <= STATUS_GAMING)) {
+			userDatas[i].status = STATUS_ATTACHED;
+			userDatas[i].socket = socket;
+			*slot = i;
+			log("ID: '" + to_string(i) + "' attached");
+			return 1;
+		}
+	}
+	return 0;
+}
+
+/*
 * Process client request.
 * @param     m        [IN] request message.
 * @param	 userData [IN] client user data.
@@ -268,7 +264,7 @@ void processRequest(char* m, UserData* userData, char* res) {
 	}
 	else {
 		processRequestNotFound(res);
-	}
+	} // TODO: process logout request (free user data).
 }
 
 /*
@@ -296,6 +292,8 @@ void processChallengingRequest(char* meta, UserData* userData, char* res) {
 	}
 
 	userData->status = STATUS_CHALLENGING;
+	userData->metas = (char*)malloc(strlen(meta) * sizeof(char));
+	strcpy(userData->metas, meta);
 	strcpy(res, OK);
 	log("'" + (string)userData->username + "' challenging '" + (string)meta + "'");
 }
@@ -346,10 +344,42 @@ void initRoom(Competitor* competitors, Room* room) {
 */
 void worker() {
 	while (1) {
-		Sleep(100);
 		for (int i = 0; i < 2 * MAX_ROOMS; i++) {
+			if (userDatas[i].status == STATUS_CHALLENGING) {
+				processChallengingStatus(i);
+			}
+			else if (userDatas[i].status == 3 ) {
+				processChallengedStatus(i);
+			}
+			else if (userDatas[i].status == 4) {
+				processGamingStatus(i);
+			}
 		}
 	}
+} 
+
+/*
+* working on challenging user data.
+* @param     i    [IN]     the index of user data on the list.
+*/
+void processChallengingStatus(int i) {
+	
+}
+
+/*
+* working on challenged user data.
+* @param     i    [IN]     the index of user data on the list.
+*/
+void processChallengedStatus(int i) {
+
+}
+
+/*
+* working on gaming user data.
+* @param     i    [IN]     the index of user data on the list.
+*/
+void processGamingStatus(int i) {
+
 }
 
 void initLists() {
