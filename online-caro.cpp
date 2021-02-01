@@ -105,6 +105,7 @@ int isLoggedIn(int i);
 void processAcceptingRequest(int i, char* res);
 int attachRoom();
 void processMovingRequest(char* meta, int i, char* res);
+char* toCharArr(string mess);
 
 Room* rooms;
 UserData* userDatas;
@@ -343,10 +344,19 @@ void processChallengingRequest(char* meta, int i, char* res) {
 
 	UserData* userData = &(userDatas[i]);
 	int status = userData->status;
+
 	if (status != STATUS_LOGGED_IN) {
 		strcpy(res, BAD_REQUEST);
 		log((string)res);
 		log("error: could not 'challenging' - user data status '" + to_string(status) + "'");
+		return;
+	}
+
+	if (!strcmp(userData->username, meta)) {
+		char* resMess = toCharArr(BAD_REQUEST + (string) " - cannot self-challenging");
+		strcpy(res, resMess);
+		log((string)resMess);
+		log("error: cannot self-challenging");
 		return;
 	}
 
@@ -356,6 +366,13 @@ void processChallengingRequest(char* meta, int i, char* res) {
 	strcpy(userData->meta, meta);
 	strcpy(res, OK);
 	log("'" + (string)userData->username + "' challenging '" + (string)meta + "'");
+}
+
+char* toCharArr(string mess) {
+	int messLength = mess.length();
+	char* resMess = (char*)malloc(messLength * sizeof(char));
+	strcpy(resMess, mess.c_str());
+	return resMess;
 }
 
 void processAcceptingRequest(int i, char* res) {
@@ -467,7 +484,7 @@ void processChallengingStatus(int i) {
 			competitor->operationStatus = STATUS_OPERATION_OPENED;
 			competitor->meta = (char*)malloc(strlen(challenger->username) * sizeof(char));
 			strcpy(competitor->meta, challenger->username);
-		}
+		} 
 		else { // TODO: Could not challenge itsself because status is changed to STATUS_CHALLENGING.
 			challenger->status = 1; // NOTE: reset user data's status to be able to challenge others.
 			log("error: could not challenged '" + (string)competitor->username + "'");
