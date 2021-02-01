@@ -302,6 +302,8 @@ void processRequest(char* m, int i, char* res) {
 	char* meta = (char*)malloc((strlen(m) - CODE_SIZE) * sizeof(char));
 	getCode(m, code, meta);
 
+	cout << "[DEBUG]: " << meta << endl;
+
 	if (!strcmp(code, CHALLENGING))	 {
 		processChallengingRequest(meta, i, res);
 	}
@@ -317,6 +319,7 @@ void processRequest(char* m, int i, char* res) {
 }
 
 void processMovingRequest(char* meta, int i, char* res) {
+	cout << "[DEBUG]: processMovingRequest - " << meta << endl;
 	UserData* userData = &(userDatas[i]);
 	Room* room = userData->room;
 	if (room->status == STATUS_ROOM_GAMING && userData->status == STATUS_GAMING) {
@@ -326,7 +329,12 @@ void processMovingRequest(char* meta, int i, char* res) {
 		int* j = (int*)malloc(sizeof(int));
 		int convRes = convertMoveToCoordiates(meta, i, j);
 
+		cout << "[DEBUG]: " << *i << endl;
+		cout << "[DEBUG]: " << *j << endl;
+
 		if (!convRes) {
+			cout << "[DEBUG]: " << meta << endl;
+			cout << "[DEBUG]: " << "response message" << endl;
 			char* resMess = toCharArr(BAD_REQUEST + (string) " - invalid move '" + meta + "'");
 			strcpy(res, resMess);
 		}
@@ -336,7 +344,7 @@ void processMovingRequest(char* meta, int i, char* res) {
 			move[1] = *j;
 			room->move = move;
 			room->moveStatus = STATUS_MOVE_OPENED;
-			res = (char*)OK;
+			strcpy(res, OK);
 		}
 	}
 	else {
@@ -589,7 +597,7 @@ int convertMoveToCoordiates(char* move, int* i, int* j) {
 
 	if (strlen(move) != 2) return 0;
 	for (int n = 0; n < 2; n++) 
-		if (!(48 <= int(move[n]) && int(move[n]) <= 57)) return 0;
+		if (!(48 <= int(move[n]) && int(move[n]) <= (48 + MAP_SIZE - 1))) return 0;
 	
 	*i = charToDigit(move[0]);
 	*j = charToDigit(move[1]);
