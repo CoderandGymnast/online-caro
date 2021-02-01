@@ -322,6 +322,18 @@ void processMovingRequest(char* meta, int i, char* res) {
 	if (room->status == STATUS_ROOM_GAMING && userData->status == STATUS_GAMING) {
 		// TODO: track turn.
 
+		int turn = room->turn;
+		char* username = userData->username;
+
+		if (
+			!((!strcmp(username, room->challenger->username) && (room->turn == TURN_CHALLENGER)) ||
+			(!strcmp(username, room->competitor->username) && (room->turn == TURN_COMPETITOR)))
+			) {
+			char* resMess = toCharArr(BAD_REQUEST + (string)" - not your turn");
+			strcpy(res, resMess);
+			return;
+		}
+
 		int* i = (int*)malloc(sizeof(int));
 		int* j = (int*)malloc(sizeof(int));
 		int convRes = convertMoveToCoordiates(meta, i, j);
