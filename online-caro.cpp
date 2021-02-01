@@ -500,14 +500,25 @@ void worker() {
 
 				char* resMapMess = toCharArr(resMap);
 
-				int matchResult = checkResult(map);
-				debug(to_string(matchResult));
-
 				toClient(resMapMess, challenger->lisSock);
 				toClient(resMapMess, competitor->lisSock);
+
+				int matchResult = checkResult(map);
+				if (matchResult == TURN_CHALLENGER) {
+					string winnerMess = (string)"[NOTI]: winner '" + challenger->username + "'";
+					string loserMess = (string)"[NOTI]: loser '" + competitor->username + "'";
+					toClient(toCharArr(winnerMess), challenger->lisSock);
+					toClient(toCharArr(loserMess), competitor->lisSock);
+				}
+				else if (matchResult == TURN_COMPETITOR) {
+					string winnerMess = (string)"[NOTI]: winner '" + competitor->username + "'";
+					string loserMess = (string)"[NOTI]: loser '" + challenger->username + "'";
+					toClient(toCharArr(winnerMess), competitor->lisSock);
+					toClient(toCharArr(loserMess), challenger->lisSock);
+				}
 				
 				if (room->moveCounter == MAP_SIZE * MAP_SIZE) {
-					char* resMess = toCharArr((string)"[NOTI]: game over");
+					char* resMess = toCharArr((string)"[NOTI]: tie game");
 					toClient(resMess, challenger->lisSock);
 					toClient(resMess, competitor->lisSock);
 				}
