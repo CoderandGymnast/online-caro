@@ -542,8 +542,11 @@ void processChallengedStatus(int i) {
 				challenger->status = STATUS_GAMING;
 				challenger->room = room;
 				competitor->room = room;
-			}
 
+				char* resMess = toCharArr(OK + (string)" - room created - challenger: '" + challenger->username + "' & competitor: '" + competitor->username + "'");
+				toClient(resMess, challenger->lisSock);
+				toClient(resMess, competitor->lisSock);
+			}
 		}
 	}
 	else if (competitor->operationStatus == STATUS_OPERATION_DENIED) {
