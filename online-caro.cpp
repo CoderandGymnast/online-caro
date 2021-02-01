@@ -33,6 +33,7 @@
 #define BAD_REQUEST "400: Bad Request"
 #define OK "200: OK"
 #define NOT_FOUND "404: Not Found"
+#define INTERNAL "500: Internal Error"
 
 #define STATUS_ATTACHED 0
 #define STATUS_LOGGED_IN 1
@@ -339,16 +340,20 @@ void processRequest(char* m, int i, char* res) {
 			return;
 		}
 
-		debug("position " + to_string(dashPos));
+		string username = ((string)meta).substr(0, dashPos);
+		string password = ((string)meta).substr(dashPos + 1, strlen(meta));
 
-	/*	TableDatas schemas;
+	    TableDatas schemas;
 		string errMess;
-		if (DatabaseOp::getInstance().logIn("hoang2", "123456", errMess, schemas) != 0) {
+		if (DatabaseOp::getInstance().logIn(username, password, errMess, schemas) != 0) {
+			debug(errMess);
+			char* resMess = toCharArr(INTERNAL + errMess);
 		}
 		else {
-			schemas.showtabledatas();
-		}*/
-	
+			char* resMess = toCharArr(OK + (string)" - logged in");
+			strcpy(res, resMess);
+		}
+
 		return;
 	}
 
