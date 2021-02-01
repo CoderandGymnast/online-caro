@@ -114,6 +114,7 @@ int** initMap();
 int convertMoveToCoordiates(char* move, int* i, int* j);
 int charToDigit(char i);
 void debug(string m);
+int checkResult(int** map);
 
 Room* rooms;
 UserData* userDatas;
@@ -488,7 +489,7 @@ void worker() {
 				string resMap = "\n\n";
 				for (int i = 0; i < MAP_SIZE; i++) {
 					for (int j = 0; j < MAP_SIZE; j++) {
-						if (map[i][j] == -1) resMap += "- ";
+						if (map[i][j] == -9) resMap += "- ";
 						else if (map[i][j] == TURN_CHALLENGER) resMap += "x ";
 						else if (map[i][j] == TURN_COMPETITOR) resMap += "o ";
 						else cout << "? ";
@@ -497,11 +498,10 @@ void worker() {
 				}
 				resMap += "\n";
 
-				debug(resMap);
-
 				char* resMapMess = toCharArr(resMap);
 
-				debug(resMapMess);
+				int matchResult = checkResult(map);
+				debug(to_string(matchResult));
 
 				toClient(resMapMess, challenger->lisSock);
 				toClient(resMapMess, competitor->lisSock);
@@ -520,6 +520,41 @@ void worker() {
 		}
 	}
 } 
+
+int checkResult(int** map) {
+
+	int sum = 0;
+
+	for (int i = 0; i < MAP_SIZE; i++) {
+		for (int j = 0; j < MAP_SIZE; j++) {
+			sum += map[i][j];
+		}
+		if (sum == 0) return 0;
+		else if (sum == 3) return 1;
+		else sum = 0;
+	}
+
+	for (int i = 0; i < MAP_SIZE; i++) {
+		for (int j = 0; j < MAP_SIZE; j++) {
+			sum += map[j][i];
+		}
+		if (sum == 0) return 0;
+		else if (sum == 3) return 1;
+		else sum = 0;
+	}
+
+	sum = map[0][0] + map[1][1] + map[2][2];
+
+	if (sum == 0) return 0;
+	else if (sum == 3) return 1;
+	
+	sum = map[0][2] + map[1][1] + map[2][0];
+	
+	if (sum == 0) return 0;
+	else if (sum == 3) return 1;
+
+	return -1;
+}
 
 void debug(string m) {
 	cout <<"[DEBUG]: " << m << endl;
@@ -665,7 +700,7 @@ int** initMap() {
 
 	for (int i = 0; i < MAP_SIZE; i++)
 		for (int j = 0; j < MAP_SIZE; j++)
-			map[i][j] = -1;
+			map[i][j] = -9;
 
 	return map;
 }
@@ -677,7 +712,7 @@ void printMap(int i) {
 	int** map = rooms[i].map;
 	for (int i = 0; i < MAP_SIZE; i++) {
 		for (int j = 0; j < MAP_SIZE; j++) {
-			if (map[i][j] == -1) cout << "-" << " ";
+			if (map[i][j] == -9) cout << "-" << " ";
 			else if (map[i][j] == TURN_CHALLENGER) cout << TURN_CHALLENGER << " ";
 			else if (map[i][j] == TURN_COMPETITOR) cout << TURN_COMPETITOR << " ";
 			else cout << "? ";
