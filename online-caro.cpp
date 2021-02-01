@@ -27,6 +27,7 @@
 #define CODE_SIZE 2
 #define ROOM_CAPACITY 2
 #define MOVE_SIZE 2
+#define MAP_SIZE 3
 
 #define BAD_REQUEST "400: Bad Request"
 #define OK "200: OK"
@@ -70,7 +71,7 @@ struct Room {
 	int turn; // {0; 1}
 	Competitor *challenger;
 	Competitor* competitor;
-	int* map[3][3];
+	int** map;
 	int moveStatus; // 0: closed, 1: opened.
 	char* move;
 };
@@ -106,6 +107,8 @@ void processAcceptingRequest(int i, char* res);
 int attachRoom();
 void processMovingRequest(char* meta, int i, char* res);
 char* toCharArr(string mess);
+void printMap(int i);
+int** initMap();
 
 Room* rooms;
 UserData* userDatas;
@@ -512,14 +515,14 @@ void processChallengedStatus(int i) {
 		printf("[DEBUG]: send '30%s' to client with Socket '%d'\n", competitor->meta, competitor->socket);
 	}
 	else if (competitor->operationStatus == STATUS_OPERATION_ACCEPTED) {
-		int res = attachRoom();
-		if (res == -1) {
+		int roomI = attachRoom();
+		if (roomI == -1) {
 			log("error: rooms are full");
 			printf("[DEBUG]: send '33 - rooms are full' to client with Socket '%d'\n", competitor->socket);
 			// TODO: Handle full rooms.
 		}
 		else {
-			Room* room = &(rooms[i]);
+			Room* room = &(rooms[roomI]);
 			room->status = STATUS_ROOM_GAMING;
 			room->turn = TURN_CHALLENGER;
 			Competitor* roomCompetitor = (Competitor*)malloc(sizeof(Competitor));
@@ -543,6 +546,9 @@ void processChallengedStatus(int i) {
 				room->moveStatus = STATUS_MOVE_CLOSED;
 				room->move = (char*)malloc(MOVE_SIZE*sizeof(char));
 
+				room->map = initMap();
+				printMap(roomI);
+
 				competitor->status = STATUS_GAMING;
 				challenger->status = STATUS_GAMING;
 				challenger->room = room;
@@ -561,6 +567,39 @@ void processChallengedStatus(int i) {
 		log("error: nonsense");
 	}
 	competitor->operationStatus = STATUS_OPERATION_CLOSED;
+}
+
+int** initMap() {
+
+	int** map;
+
+	map = new int* [MAP_SIZE];
+	for (int i = 0; i < MAP_SIZE; i++) {
+		map[i] = new int[MAP_SIZE];
+	}
+
+
+	for (int i = 0; i < MAP_SIZE; i++)
+		for (int j = 0; j < MAP_SIZE; j++)
+			map[i][j] = -1;
+
+	return map;
+}
+
+void printMap(int i) {
+
+	cout << "\n'" << rooms[i].challenger->username << "' vs. '" << rooms[i].competitor->username << ";" << endl;
+
+	int** map = rooms[i].map;
+	for (int i = 0; i < MAP_SIZE; i++) {
+		for (int j = 0; j < MAP_SIZE; j++) {
+			if (map[i][j] == -1) cout << "-" << " ";
+			else if (map[i][j] == TURN_CHALLENGER) cout << TURN_CHALLENGER << " ";
+			else if (map[i][j] == TURN_COMPETITOR) cout << TURN_COMPETITOR << " ";
+			else cout << "? ";
+		}
+		cout << "\n" << endl;
+	}
 }
 
 int attachRoom() {
