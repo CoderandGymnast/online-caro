@@ -73,7 +73,7 @@ struct Room {
 	Competitor* competitor;
 	int** map;
 	int moveStatus; // 0: closed, 1: opened.
-	char* move;
+	int* move;
 };
 
 struct UserData {
@@ -331,7 +331,10 @@ void processMovingRequest(char* meta, int i, char* res) {
 			strcpy(res, resMess);
 		}
 		else {
-			strcpy(room->move, meta);
+			int* move = (int*)malloc(MOVE_SIZE * sizeof(int));
+			move[0] = *i;
+			move[1] = *j;
+			room->move = move;
 			room->moveStatus = STATUS_MOVE_OPENED;
 			res = (char*)OK;
 		}
@@ -452,7 +455,7 @@ void worker() {
 				Competitor* competitor = rooms[i].competitor;
 				if (turn == TURN_CHALLENGER) {
 					printf("[DEBUG]: send code:'40' - meta:'%s' to client with Socket '%d'\n", competitor->username, competitor->socket);
-					printf("'%s' moves '%s'\n", challenger->username, rooms[i].move);
+					printf("'%s' moves '%d%d'\n", challenger->username, rooms[i].move[0], rooms[i].move[1]);
 					rooms[i].turn = TURN_COMPETITOR;
 				}
 				else if (turn == TURN_COMPETITOR) {
@@ -557,7 +560,7 @@ void processChallengedStatus(int i) {
 				room->challenger = roomChallenger;
 				room->competitor = roomCompetitor;
 				room->moveStatus = STATUS_MOVE_CLOSED;
-				room->move = (char*)malloc(MOVE_SIZE*sizeof(char));
+				room->move = (int*)malloc(MOVE_SIZE*sizeof(int));
 
 				room->map = initMap();
 				printMap(roomI);
