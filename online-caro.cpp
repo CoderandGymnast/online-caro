@@ -63,6 +63,7 @@ using namespace std;
 /* data structure definition: */
 struct Competitor {
 	char* username;
+	SOCKET lisSock;
 	SOCKET socket;
 };
 
@@ -74,6 +75,7 @@ struct Room {
 	int** map;
 	int moveStatus; // 0: closed, 1: opened.
 	int* move;
+	int moveCounter;
 };
 
 struct UserData {
@@ -111,6 +113,7 @@ void printMap(int i);
 int** initMap();
 int convertMoveToCoordiates(char* move, int* i, int* j);
 int charToDigit(char i);
+void debug(string m);
 
 Room* rooms;
 UserData* userDatas;
@@ -470,12 +473,25 @@ void worker() {
 				}
 				else if (turn == TURN_COMPETITOR) {
 					//printf("[DEBUG]: send code:'40' - meta:'%s' to client with Socket '%d'\n", challenger->username, challenger->socket);
-					printf("'%s' moves '%d%d'\n", competitor->username, rooms[i].move);
+					printf("'%s' moves '%d%d'\n", competitor->username, rooms[i].move[0], rooms[i].move[1]);
 					rooms[i].turn = TURN_CHALLENGER;
 				}
 				else {
 					log("error: nonsence turn");
 				}
+
+				Room* room = &(rooms[i]);
+				room->moveCounter++;
+				int** map = room->map;
+				map[room->move[0]][room->move[1]] = turn;
+				printMap(i);
+			
+				if (room->moveCounter == MAP_SIZE * MAP_SIZE) {
+					char* resMess = toCharArr((string)"[NOTI]: game over");
+					toClient(resMess, challenger->lisSock);
+					toClient(resMess, competitor->lisSock);
+				}
+
 				rooms[i].moveStatus = STATUS_MOVE_CLOSED;
 			}
 			else {
@@ -484,6 +500,10 @@ void worker() {
 		}
 	}
 } 
+
+void debug(string m) {
+	cout <<"[DEBUG]: " << m << endl;
+}
 
 /*
 * working on challenging user data.
@@ -555,6 +575,7 @@ void processChallengedStatus(int i) {
 			roomCompetitor->username = (char*)malloc(strlen(competitor->username) * sizeof(char));
 			strcpy(roomCompetitor->username, competitor->username);
 			roomCompetitor->socket = competitor->socket;
+			roomCompetitor->lisSock = competitor->lisSock;
 			Competitor* roomChallenger = (Competitor*)malloc(sizeof(Competitor));
 			int challengerI = find(competitor->meta);
 			if (challengerI == -1) {
@@ -567,10 +588,12 @@ void processChallengedStatus(int i) {
 				roomChallenger->username = (char*)malloc(strlen(challenger->username) * sizeof(char));
 				strcpy(roomChallenger->username, challenger->username);
 				roomChallenger->socket = challenger->socket;
+				roomChallenger->lisSock = challenger->lisSock;
 				room->challenger = roomChallenger;
 				room->competitor = roomCompetitor;
 				room->moveStatus = STATUS_MOVE_CLOSED;
 				room->move = (int*)malloc(MOVE_SIZE*sizeof(int));
+				room->moveCounter = 0;
 
 				room->map = initMap();
 				printMap(roomI);
