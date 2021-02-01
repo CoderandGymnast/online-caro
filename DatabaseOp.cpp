@@ -129,7 +129,8 @@ int DatabaseOp::logIn(string username, string password, std::string& errorMsg, T
 
 	this->executeQuery(logInQuery, errorMsg, datas);
 
-	if (errorMsg != "" && datas.isDataEmpty()) {		// user not exist
+	// legacy code: errorMsg != "" && 
+	if (datas.isDataEmpty()) {		// user not exist
 		errorMsg = "user doesn't exist";
 		return 1;
 	}

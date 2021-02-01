@@ -4,7 +4,7 @@
 using namespace std;
 
 bool TableDatas::isDataEmpty() {
-	return this->m_datas.empty();
+	return this->m_datas.size() == 0;
 }
 
 void TableDatas::addRow() {

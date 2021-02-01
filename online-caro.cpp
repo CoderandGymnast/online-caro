@@ -118,7 +118,7 @@ int convertMoveToCoordiates(char* move, int* i, int* j);
 int charToDigit(char i);
 void debug(string m);
 int checkResult(int** map);
-void processUnauthenticatedRequest(char* code, char* meta, char* res);
+void processUnauthenticatedRequest(char* code, char* meta, char* res, int i);
 
 Room* rooms;
 UserData* userDatas;
@@ -299,7 +299,7 @@ void processRequest(char* m, int i, char* res) {
 	UserData* userData = &(userDatas[i]);
 
 	if (!userData->status) { // NOTE: only process in case user data is not logged in (0).
-		processUnauthenticatedRequest(code, meta, res);
+		processUnauthenticatedRequest(code, meta, res, i);
 		return; // NOTE: must log in to process further.
 	}
 
@@ -317,7 +317,7 @@ void processRequest(char* m, int i, char* res) {
 	} // TODO: process logout request (free user data).
 }
 
-void processUnauthenticatedRequest(char* code, char* meta, char* res) {
+void processUnauthenticatedRequest(char* code, char* meta, char* res, int i) {
 
 	// NOTE: message format "<LOG_IN><username>-<password>"
 
@@ -367,10 +367,15 @@ void processUnauthenticatedRequest(char* code, char* meta, char* res) {
 		string errMess;
 		if (DatabaseOp::getInstance().logIn(username, password, errMess, schemas) != 0) {
 			debug(errMess);
-			char* resMess = toCharArr(INTERNAL + errMess);
+			char* resMess = toCharArr(INTERNAL + (string) + " - " + errMess);
 			strcpy(res, resMess);
 		}
-		else {
+		else { // NOTE: main socket & listen socket is assigned at connection.
+			UserData* userData = &(userDatas[i]);
+			userData->status = STATUS_LOGGED_IN;
+			userData->username = (char*)malloc(strlen(toCharArr(username))*sizeof(char));
+			strcpy(userData->username, toCharArr(username));
+			userData->operationStatus = STATUS_OPERATION_CLOSED;
 			char* resMess = toCharArr(OK + (string)" - logged in");
 			strcpy(res, resMess);
 		}
