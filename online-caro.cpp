@@ -484,8 +484,28 @@ void worker() {
 				room->moveCounter++;
 				int** map = room->map;
 				map[room->move[0]][room->move[1]] = turn;
-				printMap(i);
-			
+
+				string resMap = "\n\n";
+				for (int i = 0; i < MAP_SIZE; i++) {
+					for (int j = 0; j < MAP_SIZE; j++) {
+						if (map[i][j] == -1) resMap += "- ";
+						else if (map[i][j] == TURN_CHALLENGER) resMap += "x ";
+						else if (map[i][j] == TURN_COMPETITOR) resMap += "o ";
+						else cout << "? ";
+					}
+					resMap += "\n";
+				}
+				resMap += "\n";
+
+				debug(resMap);
+
+				char* resMapMess = toCharArr(resMap);
+
+				debug(resMapMess);
+
+				toClient(resMapMess, challenger->lisSock);
+				toClient(resMapMess, competitor->lisSock);
+				
 				if (room->moveCounter == MAP_SIZE * MAP_SIZE) {
 					char* resMess = toCharArr((string)"[NOTI]: game over");
 					toClient(resMess, challenger->lisSock);
@@ -596,7 +616,6 @@ void processChallengedStatus(int i) {
 				room->moveCounter = 0;
 
 				room->map = initMap();
-				printMap(roomI);
 
 				competitor->status = STATUS_GAMING;
 				challenger->status = STATUS_GAMING;
