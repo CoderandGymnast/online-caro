@@ -295,12 +295,61 @@ void processRequest(char* m, int i, char* res) {
 	getCode(m, code, meta);
 
 	UserData* userData = &(userDatas[i]);
+	
 	if (strcmp(code, LOG_IN)) {
 		if (!(userData->status)) {
 			char* resMess = toCharArr(BAD_REQUEST + (string)" - unauthenticated");
 			strcpy(res, resMess);
 			return;
 		}
+	}
+	else {
+
+		// NOTE: message format "<LOG_IN><username>-<password>"
+
+		if (!strlen(meta)) {
+			char* resMess = toCharArr(BAD_REQUEST + (string)" - missing credentials");
+			strcpy(res, resMess);
+			return;
+		}
+
+		int dashCounter = 0;
+		for (int i = 0; i < strlen(meta); i++) {
+			if (meta[i] == '-') {
+				dashCounter++;
+				if (dashCounter > 1) {
+					char* resMess = toCharArr(BAD_REQUEST + (string)" - invalid credentials");
+					strcpy(res, resMess);
+					return;
+				}
+			}
+		}
+
+		int dashPos = -1;
+		for (int i = 0; i < strlen(meta); i++) {
+			if (meta[i] == '-') {
+				dashPos = i;
+				break;
+			}
+		}
+		
+		if (dashPos == -1) {
+			char* resMess = toCharArr(BAD_REQUEST + (string)" - missing password");
+			strcpy(res, resMess);
+			return;
+		}
+
+		debug("position " + to_string(dashPos));
+
+	/*	TableDatas schemas;
+		string errMess;
+		if (DatabaseOp::getInstance().logIn("hoang2", "123456", errMess, schemas) != 0) {
+		}
+		else {
+			schemas.showtabledatas();
+		}*/
+	
+		return;
 	}
 
 	if (!strcmp(code, CHALLENGING)) {
