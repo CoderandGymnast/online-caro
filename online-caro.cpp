@@ -109,6 +109,8 @@ void processMovingRequest(char* meta, int i, char* res);
 char* toCharArr(string mess);
 void printMap(int i);
 int** initMap();
+int convertMoveToCoordiates(char* move, int* i, int* j);
+int charToDigit(char i);
 
 Room* rooms;
 UserData* userDatas;
@@ -319,9 +321,20 @@ void processMovingRequest(char* meta, int i, char* res) {
 	Room* room = userData->room;
 	if (room->status == STATUS_ROOM_GAMING && userData->status == STATUS_GAMING) {
 		// TODO: track turn.
-		strcpy(room->move, meta);
-		room->moveStatus = STATUS_MOVE_OPENED;
-		res = (char*)OK;
+
+		int* i = (int*)malloc(sizeof(int));
+		int* j = (int*)malloc(sizeof(int));
+		int convRes = convertMoveToCoordiates(meta, i, j);
+
+		if (!convRes) {
+			char* resMess = toCharArr(BAD_REQUEST + (string) " - invalid move '" + meta + "'");
+			strcpy(res, resMess);
+		}
+		else {
+			strcpy(room->move, meta);
+			room->moveStatus = STATUS_MOVE_OPENED;
+			res = (char*)OK;
+		}
 	}
 	else {
 		res = (char*) BAD_REQUEST;
@@ -567,6 +580,22 @@ void processChallengedStatus(int i) {
 		log("error: nonsense");
 	}
 	competitor->operationStatus = STATUS_OPERATION_CLOSED;
+}
+
+int convertMoveToCoordiates(char* move, int* i, int* j) {
+
+	if (strlen(move) != 2) return 0;
+	for (int n = 0; n < 2; n++) 
+		if (!(48 <= int(move[n]) && int(move[n]) <= 57)) return 0;
+	
+	*i = charToDigit(move[0]);
+	*j = charToDigit(move[1]);
+
+	return 1;
+}
+
+int charToDigit(char i) {
+	return int(i) - 48;
 }
 
 int** initMap() {
