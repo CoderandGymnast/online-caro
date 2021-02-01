@@ -48,7 +48,7 @@
 #define TURN_COMPETITOR 1
 
 #define STATUS_ROOM_GAMING 0
-#define STATUS_ROOM_OUT 1
+#define STATUS_ROOM_OVER 1
 
 #define STATUS_MOVE_CLOSED 0
 #define STATUS_MOVE_OPENED 1
@@ -68,7 +68,7 @@ struct Competitor {
 };
 
 struct Room {
-	int status; // 0: gaming, 1: out.
+	int status; // 0: gaming, 1: over.
 	int turn; // {0; 1}
 	Competitor *challenger;
 	Competitor* competitor;
@@ -353,6 +353,10 @@ void processMovingRequest(char* meta, int i, char* res) {
 			strcpy(res, OK);
 		}
 	}
+	else if (room->status == STATUS_ROOM_OVER) {
+		char* resMess = toCharArr(BAD_REQUEST + (string)" - match over");
+		strcpy(res, resMess);
+	}
 	else {
 		res = (char*) BAD_REQUEST;
 		log("error: '" + (string)userData->username + "' not in a room");
@@ -458,8 +462,8 @@ void worker() {
 			}
 		}
 		for (int i = 0; i < MAX_ROOMS; i++) {
-			if (!(STATUS_ROOM_GAMING <= rooms[i].status && rooms[i].status <= STATUS_ROOM_OUT)) continue;
-			if (rooms[i].status == STATUS_ROOM_OUT) {
+			if (!(STATUS_ROOM_GAMING <= rooms[i].status && rooms[i].status <= STATUS_ROOM_OVER)) continue;
+			if (rooms[i].status == STATUS_ROOM_OVER) {
 				// TODO: Free room.
 			}
 			else if (rooms[i].status == STATUS_ROOM_GAMING) {
@@ -503,27 +507,33 @@ void worker() {
 				toClient(resMapMess, challenger->lisSock);
 				toClient(resMapMess, competitor->lisSock);
 
+				rooms[i].moveStatus = STATUS_MOVE_CLOSED;
+
 				int matchResult = checkResult(map);
 				if (matchResult == TURN_CHALLENGER) {
 					string winnerMess = (string)"[NOTI]: winner '" + challenger->username + "'";
 					string loserMess = (string)"[NOTI]: loser '" + competitor->username + "'";
 					toClient(toCharArr(winnerMess), challenger->lisSock);
 					toClient(toCharArr(loserMess), competitor->lisSock);
+					room->status = STATUS_ROOM_OVER;
+					return;
 				}
 				else if (matchResult == TURN_COMPETITOR) {
 					string winnerMess = (string)"[NOTI]: winner '" + competitor->username + "'";
 					string loserMess = (string)"[NOTI]: loser '" + challenger->username + "'";
 					toClient(toCharArr(winnerMess), competitor->lisSock);
 					toClient(toCharArr(loserMess), challenger->lisSock);
+					room->status = STATUS_ROOM_OVER;
+					return;
 				}
 				
 				if (room->moveCounter == MAP_SIZE * MAP_SIZE) {
 					char* resMess = toCharArr((string)"[NOTI]: tie game");
 					toClient(resMess, challenger->lisSock);
 					toClient(resMess, competitor->lisSock);
+					room->status = STATUS_ROOM_OVER;
+					return;
 				}
-
-				rooms[i].moveStatus = STATUS_MOVE_CLOSED;
 			}
 			else {
 				log("error: nonsense room status");
