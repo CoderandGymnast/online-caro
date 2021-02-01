@@ -78,6 +78,7 @@ struct Room {
 struct UserData {
 	int status; // 0: , 1: logged in 1: challenging, 2: challenged, 3: gaming.
 	char* username;
+	SOCKET lisSock;
 	SOCKET socket;
 	Room* room;
 	int operationStatus; // 0: done / nothing, 1: open.
@@ -86,7 +87,7 @@ struct UserData {
 
 /* function declaration: */
 unsigned __stdcall processRequestThread(void* arg);
-int attachUserData(SOCKET socket, int* slot);
+int attachUserData(SOCKET lisSock, SOCKET socket, int* slot);
 void worker();
 void initLists();
 void log(string m);
@@ -159,15 +160,25 @@ int main(int argc, TCHAR* argv[]) {
 	char buff[BUFF_SIZE];
 	int ret, clientAddrLen = sizeof(clientAddr);
 
+	int counter = 0;
+	SOCKET cliLisSock;
 	while (1) {
 		SOCKET connSock;
 
 		/** The accept function permits an incoming connection attempt on a socket. */
 		connSock = accept(listenSock, (sockaddr*)&clientAddr, &clientAddrLen);
-		printf("Connected socket: %d\n", connSock);
+		log("connected socket: " + to_string((int)connSock));
+
+		if (++counter == 1) {
+			cliLisSock = connSock;
+			continue;
+		}
+
+		cout << "[client]: fully-connected client - main socket: '" << (int) connSock << "' - listen socket: '" << (int) cliLisSock << "'" << endl;;
+		counter = 0;
 
 		int* slot = (int*) malloc(sizeof(int));
-		int res = attachUserData(connSock, slot);
+		int res = attachUserData(cliLisSock, connSock, slot);
 		if (!res) {
 			processFullSlots(connSock);
 			continue;
@@ -258,10 +269,11 @@ void toClient(char* m, SOCKET socket) {
 *
 * @return                only return 0 in case slots are full.
 */
-int attachUserData(SOCKET socket, int* slot) {
+int attachUserData(SOCKET cliLisSock, SOCKET socket, int* slot) {
 	for (int i = 0; i < ROOM_CAPACITY * MAX_ROOMS; i++) {
 		if (!(STATUS_ATTACHED <= userDatas[i].status && userDatas[i].status <= STATUS_GAMING)) {
 			userDatas[i].status = STATUS_ATTACHED;
+			userDatas[i].lisSock = cliLisSock;
 			userDatas[i].socket = socket;
 			userDatas[i].operationStatus = STATUS_OPERATION_CLOSED;
 			*slot = i;
