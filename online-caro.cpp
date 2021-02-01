@@ -346,7 +346,8 @@ void processChallengingRequest(char* meta, int i, char* res) {
 	int status = userData->status;
 
 	if (status != STATUS_LOGGED_IN) {
-		strcpy(res, BAD_REQUEST);
+		char* resMess = toCharArr(BAD_REQUEST + (string)" - cannot 'challenging' while 'waiting'");
+		strcpy(res, resMess);
 		log((string)res);
 		log("error: could not 'challenging' - user data status '" + to_string(status) + "'");
 		return;
@@ -471,6 +472,7 @@ void processChallengingStatus(int i) {
 		log("error: not found '" + (string)challenger->meta + "'");
 
 		char* resMess = toCharArr(NOT_FOUND + (string)" - account: '" + (string)challenger->meta + (string)"'");
+		log(resMess);
 		toClient(resMess, challenger->lisSock);
 	}
 	else {
@@ -482,8 +484,11 @@ void processChallengingStatus(int i) {
 			competitor->meta = (char*)malloc(strlen(challenger->username) * sizeof(char));
 			strcpy(competitor->meta, challenger->username);
 		} 
-		else { // TODO: Could not challenge itsself because status is changed to STATUS_CHALLENGING.
+		else {
 			challenger->status = 1; // NOTE: reset user data's status to be able to challenge others.
+			char* resMess = toCharArr(BAD_REQUEST + (string)" - busy account '" + (string)competitor->username + "'");
+			toClient(resMess, challenger->lisSock);
+			log(resMess);
 			log("error: could not challenged '" + (string)competitor->username + "'");
 		}
 	}
