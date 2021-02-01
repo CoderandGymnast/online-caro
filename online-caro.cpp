@@ -260,7 +260,7 @@ void processFullSlots(SOCKET socket) {
 */
 void toClient(char* m, SOCKET socket) {
 	int res = send(socket, m, strlen(m), 0);
-	if (res < 0) log("could not send. Socket closed" + socket);
+	if (res < 0) log("(error): could not send. Socket closed" + socket);
 }
 
 /*
@@ -449,8 +449,15 @@ void processChallengingStatus(int i) {
 
 	int res = find(challenger->meta);
 	if (res == -1) {
+
 		challenger->status = STATUS_LOGGED_IN; // NOTE: reset user data's status to be able to challenge others.
 		log("error: not found '" + (string)challenger->meta + "'");
+
+		string mess = (string)NOT_FOUND + (string)" - account: '" + (string)challenger->meta + (string)"'";
+		int messLength = mess.length();
+		char* resMess = (char*)malloc(messLength * sizeof(char));
+		strcpy(resMess, mess.c_str());
+		toClient(resMess, challenger->lisSock);
 	}
 	else {
 		UserData* competitor = &(userDatas[res]);
