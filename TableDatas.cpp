@@ -28,11 +28,15 @@ void TableDatas::showTableDatas() {
 	}
 }
 
-string TableDatas::extractChallengeListMessage() {
+string TableDatas::extractChallengeListMessage(int* onlineSchemaIDs, int size) {
+
+	// NOTE: not include self.
 
 	string m = "\n";
 
 	for (int i = 0; i < this->m_datas.size(); i++) {
+		if (!isInList(stoi(this->m_datas[i][0]), onlineSchemaIDs, size)) m += "(offline) ";
+		else m += "(online) ";
 		for (int j = 1; j < this->m_datas[i].size(); j++) {
 			m += m_datas[i][j] + " ";
 		}
@@ -42,6 +46,14 @@ string TableDatas::extractChallengeListMessage() {
 
 	return m;
 }
+
+bool TableDatas::isInList(int id, int* onlineSchemaIDs, int size) {
+	for (int i = 0; i < size; i++) {
+		if (id == onlineSchemaIDs[i]) return true;
+	}
+	return false;
+}
+
 
 void TableDatas::removeElements(int fromIndex, int toIndex) {
 	this->m_datas.erase(this->m_datas.begin() + fromIndex, this->m_datas.begin() + toIndex);

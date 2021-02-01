@@ -141,7 +141,7 @@ int DatabaseOp::logIn(string username, string password, std::string& errorMsg, T
 void DatabaseOp::getRankList(int userId, string& errorMsg,TableDatas& datas) {
 	string getRankListQuery = "SELECT `id`, `username`, `score`" + 
 							  (string)" FROM `user_list` " + 
-							  "ORDER BY `score` DESC";
+							  "ORDER BY `score` DESC, `id` DESC";	
 
 	this->executeQuery(getRankListQuery, errorMsg, datas);
 

@@ -19,5 +19,6 @@ public:
 	void removeElements(int fromIndex, int toIndex);
 	// only use this for a table data that has only one row (like logIn())
 	UserInfo extractUserFromTableDatas();
-	string extractChallengeListMessage();
+	string extractChallengeListMessage(int* onlineSchemaIDs, int size);
+	bool isInList(int id, int* onlineSchemaIDs, int size);
 };

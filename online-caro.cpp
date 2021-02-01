@@ -125,6 +125,7 @@ void debug(string m);
 int checkResult(int** map);
 void processUnauthenticatedRequest(char* code, char* meta, char* res, int i);
 void processGetChallengeList(int i, char* res);
+int* getOnlineSchemaIDs(int* counter);
 
 Room* rooms;
 UserData* userDatas;
@@ -340,10 +341,28 @@ void processGetChallengeList(int i, char* res) {
 	}
 	else {
 		// schemas.showTableDatas();
-		char* resMess = toCharArr(schemas.extractChallengeListMessage()); // TODO: construct response.
+		int* counter = (int*) malloc(sizeof(int));
+		*counter = 0;
+		int* onlineSchemaIDs = getOnlineSchemaIDs(counter);
+		char* resMess = toCharArr(schemas.extractChallengeListMessage(onlineSchemaIDs, *counter)); // TODO: construct response.
 		strcpy(res, resMess);
 	}
 
+}
+
+int* getOnlineSchemaIDs(int* counter) {
+
+	for (int i = 0; i < 2 * MAX_ROOMS; i++) {
+		if (STATUS_LOGGED_IN <= userDatas[i].status && userDatas[i].status <= STATUS_GAMING) {
+			(*counter)++;
+		}
+	}
+
+	int* schemaIDs = (int*)malloc((*counter) * sizeof(int));
+	for (int i = 0; i < (*counter); i++) {
+		schemaIDs[i] = userDatas[i].schemaID;
+	}
+	return schemaIDs;
 }
 
 void processUnauthenticatedRequest(char* code, char* meta, char* res, int i) {
