@@ -302,8 +302,6 @@ void processRequest(char* m, int i, char* res) {
 	char* meta = (char*)malloc((strlen(m) - CODE_SIZE) * sizeof(char));
 	getCode(m, code, meta);
 
-	cout << "[DEBUG]: " << meta << endl;
-
 	if (!strcmp(code, CHALLENGING))	 {
 		processChallengingRequest(meta, i, res);
 	}
@@ -319,7 +317,6 @@ void processRequest(char* m, int i, char* res) {
 }
 
 void processMovingRequest(char* meta, int i, char* res) {
-	cout << "[DEBUG]: processMovingRequest - " << meta << endl;
 	UserData* userData = &(userDatas[i]);
 	Room* room = userData->room;
 	if (room->status == STATUS_ROOM_GAMING && userData->status == STATUS_GAMING) {
@@ -329,20 +326,13 @@ void processMovingRequest(char* meta, int i, char* res) {
 		int* j = (int*)malloc(sizeof(int));
 		int convRes = convertMoveToCoordiates(meta, i, j);
 
-		cout << "[DEBUG]: " << *i << endl;
-		cout << "[DEBUG]: " << *j << endl;
-
 		if (!convRes) {
-			cout << "[DEBUG]: " << meta << endl;
-			cout << "[DEBUG]: " << "response message" << endl;
 			char* resMess = toCharArr(BAD_REQUEST + (string) " - invalid move '" + meta + "'");
 			strcpy(res, resMess);
 		}
 		else {
-			int* move = (int*)malloc(MOVE_SIZE * sizeof(int));
-			move[0] = *i;
-			move[1] = *j;
-			room->move = move;
+			room->move[0] = *i;
+			room->move[1] = *j;
 			room->moveStatus = STATUS_MOVE_OPENED;
 			strcpy(res, OK);
 		}
@@ -462,13 +452,13 @@ void worker() {
 				Competitor* challenger = rooms[i].challenger;
 				Competitor* competitor = rooms[i].competitor;
 				if (turn == TURN_CHALLENGER) {
-					printf("[DEBUG]: send code:'40' - meta:'%s' to client with Socket '%d'\n", competitor->username, competitor->socket);
+					//printf("[DEBUG]: send code:'40' - meta:'%s' to client with Socket '%d'\n", competitor->username, competitor->socket);
 					printf("'%s' moves '%d%d'\n", challenger->username, rooms[i].move[0], rooms[i].move[1]);
 					rooms[i].turn = TURN_COMPETITOR;
 				}
 				else if (turn == TURN_COMPETITOR) {
-					printf("[DEBUG]: send code:'40' - meta:'%s' to client with Socket '%d'\n", challenger->username, challenger->socket);
-					printf("'%s' moves '%s'\n", competitor->username, rooms[i].move);
+					//printf("[DEBUG]: send code:'40' - meta:'%s' to client with Socket '%d'\n", challenger->username, challenger->socket);
+					printf("'%s' moves '%d%d'\n", competitor->username, rooms[i].move);
 					rooms[i].turn = TURN_CHALLENGER;
 				}
 				else {
@@ -536,13 +526,13 @@ void processChallengedStatus(int i) {
 
 	UserData* competitor = &(userDatas[i]);
 	if (competitor->operationStatus == STATUS_OPERATION_OPENED) {
-		printf("[DEBUG]: send '30%s' to client with Socket '%d'\n", competitor->meta, competitor->socket);
+		//printf("[DEBUG]: send '30%s' to client with Socket '%d'\n", competitor->meta, competitor->socket);
 	}
 	else if (competitor->operationStatus == STATUS_OPERATION_ACCEPTED) {
 		int roomI = attachRoom();
 		if (roomI == -1) {
 			log("error: rooms are full");
-			printf("[DEBUG]: send '33 - rooms are full' to client with Socket '%d'\n", competitor->socket);
+			//printf("[DEBUG]: send '33 - rooms are full' to client with Socket '%d'\n", competitor->socket);
 			// TODO: Handle full rooms.
 		}
 		else {
