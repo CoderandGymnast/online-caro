@@ -55,7 +55,8 @@
 #define STATUS_MOVE_CLOSED 0
 #define STATUS_MOVE_OPENED 1
 
-#define LOG_IN "00"
+#define REGISTRATION "00"
+#define LOG_IN "10"
 #define CHALLENGING "30"
 #define ACCEPTED "31"
 
@@ -321,7 +322,62 @@ void processUnauthenticatedRequest(char* code, char* meta, char* res, int i) {
 
 	// NOTE: message format "<LOG_IN><username>-<password>"
 
-	if (strcmp(code, LOG_IN)) {
+	if (!strcmp(code, REGISTRATION)) {
+
+		if (!strlen(meta)) {
+			char* resMess = toCharArr(BAD_REQUEST + (string)" - missing credentials");
+			strcpy(res, resMess);
+			return;
+		}
+
+		int dashCounter = 0;
+		for (int i = 0; i < strlen(meta); i++) {
+			if (meta[i] == '-') {
+				dashCounter++;
+				if (dashCounter > 1) {
+					char* resMess = toCharArr(BAD_REQUEST + (string)" - invalid credentials");
+					strcpy(res, resMess);
+					return;
+				}
+			}
+		}
+
+		int dashPos = -1;
+		for (int i = 0; i < strlen(meta); i++) {
+			if (meta[i] == '-') {
+				dashPos = i;
+				break;
+			}
+		}
+
+		if (dashPos == -1) {
+			char* resMess = toCharArr(BAD_REQUEST + (string)" - missing password");
+			strcpy(res, resMess);
+			return;
+		}
+
+		string username = ((string)meta).substr(0, dashPos);
+		string password = ((string)meta).substr(dashPos + 1, strlen(meta));
+
+		if (!strlen(toCharArr(password))) {
+			char* resMess = toCharArr(BAD_REQUEST + (string)" - missing password");
+			strcpy(res, resMess);
+			return;
+		}
+
+		string errMess;
+
+		if (DatabaseOp::getInstance().createAccount(username, password, errMess) != 0) {
+			char* resMess = toCharArr(INTERNAL + (string)+" - " + errMess);
+			strcpy(res, resMess);
+			return;
+		}
+		else {
+			char* resMess = toCharArr(OK + (string)" - created account: username '" + username + "', password: '" + password + "'");
+			strcpy(res, resMess);
+			return;
+		}
+	} else if (strcmp(code, LOG_IN)) {
 		char* resMess = toCharArr(BAD_REQUEST + (string)" - unauthenticated");
 		strcpy(res, resMess);
 		return;
@@ -363,10 +419,15 @@ void processUnauthenticatedRequest(char* code, char* meta, char* res, int i) {
 		string username = ((string)meta).substr(0, dashPos);
 		string password = ((string)meta).substr(dashPos + 1, strlen(meta));
 
+		if (!strlen(toCharArr(password))) {
+			char* resMess = toCharArr(BAD_REQUEST + (string)" - missing password");
+			strcpy(res, resMess);
+			return;
+		}
+
 		TableDatas schemas;
 		string errMess;
 		if (DatabaseOp::getInstance().logIn(username, password, errMess, schemas) != 0) {
-			debug(errMess);
 			char* resMess = toCharArr(INTERNAL + (string) + " - " + errMess);
 			strcpy(res, resMess);
 		}
