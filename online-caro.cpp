@@ -470,10 +470,7 @@ void processChallengingStatus(int i) {
 		challenger->status = STATUS_LOGGED_IN; // NOTE: reset user data's status to be able to challenge others.
 		log("error: not found '" + (string)challenger->meta + "'");
 
-		string mess = (string)NOT_FOUND + (string)" - account: '" + (string)challenger->meta + (string)"'";
-		int messLength = mess.length();
-		char* resMess = (char*)malloc(messLength * sizeof(char));
-		strcpy(resMess, mess.c_str());
+		char* resMess = toCharArr(NOT_FOUND + (string)" - account: '" + (string)challenger->meta + (string)"'");
 		toClient(resMess, challenger->lisSock);
 	}
 	else {
