@@ -16,6 +16,7 @@
 #include <process.h> /* Contains multi-thread APIs. */
 #include <thread>
 #include <ctime>
+#include "DatabaseOp.h"
 
 #pragma comment (lib, "Ws2_32.lib")
 
@@ -53,6 +54,7 @@
 #define STATUS_MOVE_CLOSED 0
 #define STATUS_MOVE_OPENED 1
 
+#define LOG_IN "00"
 #define CHALLENGING "30"
 #define ACCEPTED "31"
 
@@ -218,8 +220,6 @@ unsigned __stdcall processRequestThread(void* args) {
 	SOCKET connSock = (SOCKET)userData->socket;
 	char* res = (char*)malloc(RESPONSE_SIZE * sizeof(char));
 
-	bool counter = false; // TEMP.
-
 	while (1) {
 		ret = recv(connSock, buff, BUFF_SIZE, 0);
 		if (ret < 0) printf("Socket '%d' closed\n", connSock);
@@ -227,19 +227,7 @@ unsigned __stdcall processRequestThread(void* args) {
 			buff[ret] = 0; // NOTE: '\0' (Null terminator, NUL) is a control character with the value 0.
 			printf("client socket '%d': '%s'\n", connSock, buff);
 
-			if (userData->status) { // NOTE: Must logged in for further features.
-				processRequest(buff, *slot, res);
-			}
-
-			if (!counter) { // TEMP.
-				userData->username = (char*)malloc(MAX_USERNAME_SIZE * sizeof(char));
-				strcpy(userData->username, buff);
-				userData->status = STATUS_LOGGED_IN;
-				string username = userData->username;
-				log("account '" + username + "' logged in");
-				counter = true;
-				strcpy(res, OK);
-			}
+			processRequest(buff, *slot, res);
 
 			log("response: '" + (string)res + "' - size: '" + to_string(strlen(res)) + "'");
 			ret = send(connSock, res, strlen(res), 0); // NOTE: could not send too large data.
@@ -305,6 +293,15 @@ void processRequest(char* m, int i, char* res) {
 	char* code = (char*)malloc(CODE_SIZE * sizeof(char));
 	char* meta = (char*)malloc((strlen(m) - CODE_SIZE) * sizeof(char));
 	getCode(m, code, meta);
+
+	UserData* userData = &(userDatas[i]);
+	if (strcmp(code, LOG_IN)) {
+		if (!(userData->status)) {
+			char* resMess = toCharArr(BAD_REQUEST + (string)" - unauthenticated");
+			strcpy(res, resMess);
+			return;
+		}
+	}
 
 	if (!strcmp(code, CHALLENGING)) {
 		processChallengingRequest(meta, i, res);
