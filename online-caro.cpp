@@ -17,6 +17,7 @@
 #include <thread>
 #include <ctime>
 #include "DatabaseOp.h"
+#include "UserInfo.h"
 
 #pragma comment (lib, "Ws2_32.lib")
 
@@ -57,6 +58,7 @@
 
 #define REGISTRATION "00"
 #define LOG_IN "10"
+#define GET_CHALLENGE_LIST "20"
 #define CHALLENGING "30"
 #define ACCEPTED "31"
 
@@ -83,6 +85,8 @@ struct Room {
 };
 
 struct UserData {
+	int schemaID;
+	int score;
 	int status; // 0: , 1: logged in 1: challenging, 2: challenged, 3: gaming.
 	char* username;
 	SOCKET lisSock;
@@ -120,6 +124,7 @@ int charToDigit(char i);
 void debug(string m);
 int checkResult(int** map);
 void processUnauthenticatedRequest(char* code, char* meta, char* res, int i);
+void processGetChallengeList(int i, char* res);
 
 Room* rooms;
 UserData* userDatas;
@@ -313,9 +318,32 @@ void processRequest(char* m, int i, char* res) {
 	else if (!strcmp(code, MOVE)) {
 		processMovingRequest(meta, i, res);
 	}
+	else if (!strcmp(code, GET_CHALLENGE_LIST)) {
+		processGetChallengeList(i, res);
+	}
 	else {
 		processRequestNotFound(res);
 	} // TODO: process logout request (free user data).
+}
+
+void processGetChallengeList(int i, char* res) {
+
+	UserData* userData = &(userDatas[i]);
+	int schemaID = userData->schemaID;
+	string errMess;
+	TableDatas schemas;
+	DatabaseOp::getInstance().getRankList(schemaID, errMess, schemas);
+	if (errMess != "") {
+		char* resMess = toCharArr(INTERNAL + errMess);
+		strcpy(res, resMess);
+		return;
+	}
+	else {
+		// schemas.showTableDatas();
+		char* resMess = toCharArr(schemas.extractChallengeListMessage()); // TODO: construct response.
+		strcpy(res, resMess);
+	}
+
 }
 
 void processUnauthenticatedRequest(char* code, char* meta, char* res, int i) {
@@ -432,7 +460,11 @@ void processUnauthenticatedRequest(char* code, char* meta, char* res, int i) {
 			strcpy(res, resMess);
 		}
 		else { // NOTE: main socket & listen socket is assigned at connection.
+			UserInfo user =  schemas.extractUserFromTableDatas();
+			int schemaID = user.id;
 			UserData* userData = &(userDatas[i]);
+			userData->schemaID = schemaID;
+			userData->score = user.score;
 			userData->status = STATUS_LOGGED_IN;
 			userData->username = (char*)malloc(strlen(toCharArr(username))*sizeof(char));
 			strcpy(userData->username, toCharArr(username));

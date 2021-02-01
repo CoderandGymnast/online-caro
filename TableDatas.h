@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <string>
+#include "UserInfo.h"
 
 // ----------- save datas after SELECT query --------------
 class TableDatas {
@@ -16,4 +17,7 @@ public:
 	void clearDatas();
 	void removeAnElement(int index);
 	void removeElements(int fromIndex, int toIndex);
+	// only use this for a table data that has only one row (like logIn())
+	UserInfo extractUserFromTableDatas();
+	string extractChallengeListMessage();
 };

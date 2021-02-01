@@ -17,7 +17,7 @@ void TableDatas::addDataInCurrentLastRow(std::string data) {
 }
 
 void TableDatas::showTableDatas() {
-	cout << endl << "----------table datas (testing purpose)-------------" << endl;
+	//cout << endl << "----------table datas (testing purpose)-------------" << endl;
 
 	for (int i = 0; i < this->m_datas.size(); i++) {
 		for (int j = 0; j < this->m_datas[i].size(); j++) {
@@ -26,6 +26,21 @@ void TableDatas::showTableDatas() {
 
 		cout << endl; // endl every each row
 	}
+}
+
+string TableDatas::extractChallengeListMessage() {
+
+	string m = "\n";
+
+	for (int i = 0; i < this->m_datas.size(); i++) {
+		for (int j = 1; j < this->m_datas[i].size(); j++) {
+			m += m_datas[i][j] + " ";
+		}
+
+		m += "\n";
+	}
+
+	return m;
 }
 
 void TableDatas::removeElements(int fromIndex, int toIndex) {
@@ -40,3 +55,11 @@ void TableDatas::clearDatas() {
 	this->m_datas.clear();
 }
 
+UserInfo TableDatas::extractUserFromTableDatas() {
+
+	int id = stoi(this->m_datas[0][0]);
+	string username = this->m_datas[0][1];
+	int score = stoi(this->m_datas[0][2]);
+
+	return UserInfo(id, username, score);
+}
