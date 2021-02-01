@@ -118,6 +118,7 @@ int convertMoveToCoordiates(char* move, int* i, int* j);
 int charToDigit(char i);
 void debug(string m);
 int checkResult(int** map);
+void processUnauthenticatedRequest(char* code, char* meta, char* res);
 
 Room* rooms;
 UserData* userDatas;
@@ -296,17 +297,36 @@ void processRequest(char* m, int i, char* res) {
 	getCode(m, code, meta);
 
 	UserData* userData = &(userDatas[i]);
-	
-	if (strcmp(code, LOG_IN)) {
-		if (!(userData->status)) {
-			char* resMess = toCharArr(BAD_REQUEST + (string)" - unauthenticated");
-			strcpy(res, resMess);
-			return;
-		}
+
+	if (!userData->status) { // NOTE: only process in case user data is not logged in (0).
+		processUnauthenticatedRequest(code, meta, res);
+		return; // NOTE: must log in to process further.
+	}
+
+	if (!strcmp(code, CHALLENGING)) {
+		processChallengingRequest(meta, i, res);
+	}
+	else if (!strcmp(code, ACCEPTED)) {
+		processAcceptingRequest(i, res);
+	}
+	else if (!strcmp(code, MOVE)) {
+		processMovingRequest(meta, i, res);
 	}
 	else {
+		processRequestNotFound(res);
+	} // TODO: process logout request (free user data).
+}
 
-		// NOTE: message format "<LOG_IN><username>-<password>"
+void processUnauthenticatedRequest(char* code, char* meta, char* res) {
+
+	// NOTE: message format "<LOG_IN><username>-<password>"
+
+	if (strcmp(code, LOG_IN)) {
+		char* resMess = toCharArr(BAD_REQUEST + (string)" - unauthenticated");
+		strcpy(res, resMess);
+		return;
+	}
+	else {
 
 		if (!strlen(meta)) {
 			char* resMess = toCharArr(BAD_REQUEST + (string)" - missing credentials");
@@ -333,7 +353,7 @@ void processRequest(char* m, int i, char* res) {
 				break;
 			}
 		}
-		
+
 		if (dashPos == -1) {
 			char* resMess = toCharArr(BAD_REQUEST + (string)" - missing password");
 			strcpy(res, resMess);
@@ -343,11 +363,12 @@ void processRequest(char* m, int i, char* res) {
 		string username = ((string)meta).substr(0, dashPos);
 		string password = ((string)meta).substr(dashPos + 1, strlen(meta));
 
-	    TableDatas schemas;
+		TableDatas schemas;
 		string errMess;
 		if (DatabaseOp::getInstance().logIn(username, password, errMess, schemas) != 0) {
 			debug(errMess);
 			char* resMess = toCharArr(INTERNAL + errMess);
+			strcpy(res, resMess);
 		}
 		else {
 			char* resMess = toCharArr(OK + (string)" - logged in");
@@ -356,19 +377,6 @@ void processRequest(char* m, int i, char* res) {
 
 		return;
 	}
-
-	if (!strcmp(code, CHALLENGING)) {
-		processChallengingRequest(meta, i, res);
-	}
-	else if (!strcmp(code, ACCEPTED)) {
-		processAcceptingRequest(i, res);
-	}
-	else if (!strcmp(code, MOVE)) {
-		processMovingRequest(meta, i, res);
-	}
-	else {
-		processRequestNotFound(res);
-	} // TODO: process logout request (free user data).
 }
 
 void processMovingRequest(char* meta, int i, char* res) {
