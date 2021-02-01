@@ -365,7 +365,8 @@ void processChallengingRequest(char* meta, int i, char* res) {
 	userData->operationStatus = 1;
 	userData->meta = (char*)malloc(strlen(meta) * sizeof(char));
 	strcpy(userData->meta, meta);
-	strcpy(res, OK);
+	char* resMess = toCharArr(OK + (string) " - waiting '" + meta + "'");
+	strcpy(res, resMess);
 	log("'" + (string)userData->username + "' challenging '" + (string)meta + "'");
 }
 
@@ -478,11 +479,15 @@ void processChallengingStatus(int i) {
 	else {
 		UserData* competitor = &(userDatas[res]);
 		if (competitor->status == STATUS_LOGGED_IN) {
+
 			log("competitor: '" + (string)competitor->username + "'");
 			competitor->status = STATUS_CHALLENGED;
 			competitor->operationStatus = STATUS_OPERATION_OPENED;
 			competitor->meta = (char*)malloc(strlen(challenger->username) * sizeof(char));
 			strcpy(competitor->meta, challenger->username);
+
+			char* resMess = toCharArr((string)"[NOTI]: '" + challenger->username + "' is challenging");
+			toClient(resMess, competitor->lisSock);
 		} 
 		else {
 			challenger->status = 1; // NOTE: reset user data's status to be able to challenge others.
