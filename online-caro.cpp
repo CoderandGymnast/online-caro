@@ -68,6 +68,8 @@ using namespace std;
 
 /* data structure definition: */
 struct Competitor {
+	int schemaID;
+	int score;
 	char* username;
 	SOCKET lisSock;
 	SOCKET socket;
@@ -126,6 +128,7 @@ int checkResult(int** map);
 void processUnauthenticatedRequest(char* code, char* meta, char* res, int i);
 void processGetChallengeList(int i, char* res);
 int* getOnlineSchemaIDs(int* counter);
+int updateScore(int schemaID, int updatedScore, char* resMess);
 
 Room* rooms;
 UserData* userDatas;
@@ -691,6 +694,14 @@ void worker() {
 					string loserMess = (string)"[NOTI]: loser '" + competitor->username + "'";
 					toClient(toCharArr(winnerMess), challenger->lisSock);
 					toClient(toCharArr(loserMess), competitor->lisSock);
+					char* winnerUpdateResMess = (char*)malloc(BUFF_SIZE * sizeof(char));
+					challenger->score += 3;
+					int winnerUpdateResult = updateScore(challenger->schemaID, challenger->score + 3, winnerUpdateResMess);
+					if (!winnerUpdateResult)toClient(toCharArr(INTERNAL + (string) +" - " + winnerUpdateResMess), competitor->lisSock);
+					competitor->score -= 3;
+					char* loserUpdateMess = (char*)malloc(BUFF_SIZE * sizeof(char));
+					int loserUpdateResult = updateScore(competitor->schemaID, competitor->score - 3, loserUpdateMess);
+					if (!loserUpdateResult)toClient(toCharArr(INTERNAL + (string) + " - " + loserUpdateMess), competitor->lisSock);
 					room->status = STATUS_ROOM_OVER;
 					return;
 				}
@@ -699,6 +710,14 @@ void worker() {
 					string loserMess = (string)"[NOTI]: loser '" + challenger->username + "'";
 					toClient(toCharArr(winnerMess), competitor->lisSock);
 					toClient(toCharArr(loserMess), challenger->lisSock);
+					competitor->score += 3;
+					char* winnerUpdateResMess = (char*)malloc(BUFF_SIZE * sizeof(char));
+					int winnerUpdateResult = updateScore(competitor->schemaID, competitor->score + 3, winnerUpdateResMess);
+					if (!winnerUpdateResult)toClient(toCharArr(INTERNAL + (string) +" - " + winnerUpdateResMess), competitor->lisSock);
+					challenger->score -= 3;
+					char* loserUpdateMess = (char*)malloc(BUFF_SIZE * sizeof(char));
+					int loserUpdateResult = updateScore(challenger->schemaID, challenger->score - 3, loserUpdateMess);
+					if (!loserUpdateResult)toClient(toCharArr(INTERNAL + (string) +" - " + loserUpdateMess), competitor->lisSock);
 					room->status = STATUS_ROOM_OVER;
 					return;
 				}
@@ -715,6 +734,18 @@ void worker() {
 				log("error: nonsense room status");
 			}
 		}
+	}
+}
+
+int updateScore(int schemaID, int updatedScore, char* resMess) {
+
+	string errMess;
+	if (DatabaseOp::getInstance().updateUserScore(schemaID, updatedScore, errMess) != 0) {
+		strcpy(resMess, toCharArr(errMess));
+		return 0;
+	}
+	else {
+		return 1;
 	}
 }
 
@@ -824,6 +855,8 @@ void processChallengedStatus(int i) {
 			room->status = STATUS_ROOM_GAMING;
 			room->turn = TURN_CHALLENGER;
 			Competitor* roomCompetitor = (Competitor*)malloc(sizeof(Competitor));
+			roomCompetitor->schemaID = competitor->schemaID;
+			roomCompetitor->score = competitor->score;
 			roomCompetitor->username = (char*)malloc(strlen(competitor->username) * sizeof(char));
 			strcpy(roomCompetitor->username, competitor->username);
 			roomCompetitor->socket = competitor->socket;
@@ -837,6 +870,8 @@ void processChallengedStatus(int i) {
 			else {
 
 				UserData* challenger = &(userDatas[challengerI]);
+				roomChallenger->schemaID = challenger->schemaID;
+				roomChallenger->score = challenger->score;
 				roomChallenger->username = (char*)malloc(strlen(challenger->username) * sizeof(char));
 				strcpy(roomChallenger->username, challenger->username);
 				roomChallenger->socket = challenger->socket;
