@@ -859,7 +859,12 @@ void worker() { // NOTE: worker can not have return.
 				map[room->move[0]][room->move[1]] = turn;
 
 				string resMap = "\n\n";
+				resMap += "  0 1 2\n";
+				int counter = 0;
 				for (int i = 0; i < MAP_SIZE; i++) {
+					resMap += to_string(counter);
+					resMap += " ";
+					counter++;
 					for (int j = 0; j < MAP_SIZE; j++) {
 						if (map[i][j] == -9) resMap += "- ";
 						else if (map[i][j] == TURN_CHALLENGER) resMap += "x ";
