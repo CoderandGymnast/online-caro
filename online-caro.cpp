@@ -235,6 +235,10 @@ int main(int argc, TCHAR* argv[]) {
 	return 0;
 }
 
+/* 
+* each client has its own thread. This function defines logic inside of those threads.
+* @param     args     thread params
+*/
 unsigned __stdcall processRequestThread(void* args) {
 
 	char buff[BUFF_SIZE];
@@ -271,6 +275,10 @@ unsigned __stdcall processRequestThread(void* args) {
 	return 0;
 }
 
+/* 
+* process terminated client event
+* @param     i     index of user in the userDatas list.
+*/
 void processClientTerminated(int i) {
 	UserData* userData = &(userDatas[i]);
 	closesocket(userData->socket);
@@ -375,11 +383,21 @@ void processRequest(char* m, int i, char* res) {
 	} // TODO: process logout request (free user data).
 }
 
+/*
+* process get score request from client
+* @param     i     index of the user in userDatas list.
+* @param     res     [OUT] response message.
+*/
 void processGetScore(int i, char* res) {
 	UserData* userData = &(userDatas[i]);
 	strcpy(res, toCharArr(OK + (string) " - score: '" + to_string(userData->score) + "'"));
 }
 
+/*
+* process surrender request from client
+* @param     i     index of the user in userDatas list.
+* @param     res     [OUT] response message.
+*/
 void processSurrenderRequest(int i, char* res) {
 	UserData* userData = &(userDatas[i]);
 	Room* room = userData->room;
@@ -399,6 +417,11 @@ void processSurrenderRequest(int i, char* res) {
 	}
 }
 
+/*
+* process denied request from client
+* @param     i     index of the user in userDatas list.
+* @param     res     [OUT] response message.
+*/
 void processDeniedRequest(int i, char* res) {
 
 	UserData* userData = &(userDatas[i]);
@@ -413,6 +436,11 @@ void processDeniedRequest(int i, char* res) {
 	strcpy(res, toCharArr(OK));
 }
 
+/*
+* process logout request from client
+* @param     i     index of the user in userDatas list.
+* @param     res     [OUT] response message.
+*/
 void processLogOut(int i, char* res) {
 
 	UserData* userData = &(userDatas[i]);
@@ -425,6 +453,11 @@ void processLogOut(int i, char* res) {
 	strcpy(res, toCharArr(OK + (string)" - logged out")); // NOTE: do not need strcpy_s in this situation.
 }
 
+/*
+* process get challenge list event for a specific user.
+* @param     i     index of the user in userDatas list.
+* @param     res     [OUT] response message.
+*/
 void processGetChallengeList(int i, char* res) {
 
 	UserData* userData = &(userDatas[i]);
@@ -448,6 +481,12 @@ void processGetChallengeList(int i, char* res) {
 
 }
 
+/*
+* get online user ID which used in DB.
+* @param     counter     [OUT] number of onliner user IDs.
+* 
+* @return                return the user ID list.
+*/
 int* getOnlineSchemaIDs(int* counter) {
 
 	for (int i = 0; i < 2 * MAX_ROOMS; i++) {
@@ -463,6 +502,13 @@ int* getOnlineSchemaIDs(int* counter) {
 	return schemaIDs;
 }
 
+/*
+* process get challenge list event for a specific user.
+* @param     code     request code.
+* @param     meta     request data.
+* @param     res     [OUT] response message.
+* @param     i     index of the user in userDatas list.
+*/
 void processUnauthenticatedRequest(char* code, char* meta, char* res, int i) {
 
 	// NOTE: message format "<LOG_IN><username>-<password>"
@@ -600,6 +646,12 @@ void processUnauthenticatedRequest(char* code, char* meta, char* res, int i) {
 	}
 }
 
+/*
+* process moving request from client.
+* @param     meta     request data.
+* @param     res     [OUT] response message.
+* @param     i     index of the user in userDatas list.
+*/
 void processMovingRequest(char* meta, int i, char* res) {
 	UserData* userData = &(userDatas[i]);
 	Room* room = userData->room;
@@ -691,6 +743,12 @@ void processChallengingRequest(char* meta, int i, char* res) {
 	log("'" + (string)userData->username + "' challenging '" + (string)meta + "'");
 }
 
+/*
+* convert string to character array.
+* @param     mess     input string.
+* 
+* @return             output character array.
+*/
 char* toCharArr(string mess) {
 	int messLength = mess.length();
 	char* resMess = (char*)malloc(messLength * sizeof(char));
@@ -698,6 +756,11 @@ char* toCharArr(string mess) {
 	return resMess;
 }
 
+/*
+* process accepting request from client.
+* @param     res     [OUT] response message.
+* @param     i     index of the user in userDatas list.
+*/
 void processAcceptingRequest(int i, char* res) {
 
 	UserData* userData = &(userDatas[i]);
@@ -944,6 +1007,14 @@ void worker() { // NOTE: worker can not have return.
 	}
 }
 
+/*
+* update score by ID in DB.
+* @param     schemaID     ID in DB.
+* @param     updatedScore     new score.
+* @param     resMess     [OUT] response message.
+*
+* @return                0: error. 1: success.
+*/
 int updateScore(int schemaID, int updatedScore, char* resMess) {
 
 	string errMess;
@@ -956,6 +1027,12 @@ int updateScore(int schemaID, int updatedScore, char* resMess) {
 	}
 }
 
+/*
+* check result of the specified map.
+* @param     map     the specified map.
+* 
+* @return            -1: nothing. 0: challenger wins. 1: competitor wins.
+*/
 int checkResult(int** map) {
 
 	int sum = 0;
@@ -991,6 +1068,11 @@ int checkResult(int** map) {
 	return -1;
 }
 
+
+/*
+* debug helper.
+* @param     m     the debug message.
+*/
 void debug(string m) {
 	cout << "[DEBUG]: " << m << endl;
 }
@@ -1149,6 +1231,13 @@ void processChallengedStatus(int i) {
 	competitor->operationStatus = STATUS_OPERATION_CLOSED;
 }
 
+/*
+* convert move from character array to integers
+* @param     move     move in character array.
+* @param     i, j     move in integers.
+*
+* @return     0: invalid move. 1: success.
+*/
 int convertMoveToCoordiates(char* move, int* i, int* j) {
 
 	if (strlen(move) != 2) return 0;
@@ -1161,10 +1250,21 @@ int convertMoveToCoordiates(char* move, int* i, int* j) {
 	return 1;
 }
 
+/*
+* convert character to digit.
+* @param     i     input character.
+*
+* @return          integer digit.
+*/
 int charToDigit(char i) {
 	return int(i) - 48;
 }
 
+/*
+* initiate an empty map.
+*
+* @return          the initiated map.
+*/
 int** initMap() {
 
 	int** map;
@@ -1182,6 +1282,10 @@ int** initMap() {
 	return map;
 }
 
+/*
+* print the specified map.
+* @param     i     room index in rooms list.
+*/
 void printMap(int i) {
 
 	cout << "\n'" << rooms[i].challenger->username << "' vs. '" << rooms[i].competitor->username << ";" << endl;
@@ -1198,6 +1302,11 @@ void printMap(int i) {
 	}
 }
 
+/*
+* register a new room in the rooms  list.
+* 
+* @return          -1: rooms are full. int: index of in the rooms list.
+*/
 int attachRoom() {
 	for (int i = 0; i < MAX_ROOMS; i++) {
 		if (!(0 <= rooms[i].status && rooms[i].status <= 1)) {
@@ -1239,11 +1348,18 @@ int isLoggedIn(int i) {
 	return (STATUS_LOGGED_IN <= userDatas[i].status && userDatas[i].status <= STATUS_GAMING) ? 1 : 0;
 }
 
+/*
+* initiate the rooms & userDatas list.
+*/
 void initLists() {
 	userDatas = (UserData*)malloc(2 * MAX_ROOMS * sizeof(UserData));
 	rooms = (Room*)malloc(MAX_ROOMS * sizeof(Room));
 }
 
+/*
+* logger
+* @param     m     message.
+*/
 void log(string m) {
 	time_t now = time(0);
 	char* dt = ctime(&now);
