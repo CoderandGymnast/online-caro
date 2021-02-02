@@ -328,6 +328,11 @@ int attachUserData(SOCKET cliLisSock, SOCKET socket, int* slot) {
 */
 void processRequest(char* m, int i, char* res) {
 
+	if (strlen(m) < 2) {
+		strcpy(res, toCharArr(BAD_REQUEST + (string)" - invalid request"));
+		return;
+	}
+
 	char* code = (char*)malloc(CODE_SIZE * sizeof(char));
 	char* meta = (char*)malloc((strlen(m) - CODE_SIZE) * sizeof(char));
 	getCode(m, code, meta);
