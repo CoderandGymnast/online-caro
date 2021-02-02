@@ -62,6 +62,7 @@
 #define GET_CHALLENGE_LIST "20"
 #define CHALLENGING "30"
 #define ACCEPTED "31"
+#define DENIED "32"
 
 #define MOVE "40"
 
@@ -132,6 +133,7 @@ int* getOnlineSchemaIDs(int* counter);
 int updateScore(int schemaID, int updatedScore, char* resMess);
 void processLogOut(int i, char* res);
 void processClientTerminated(int i);
+void processDeniedRequest(int i,  char* res);
 
 Room* rooms;
 UserData* userDatas;
@@ -342,6 +344,9 @@ void processRequest(char* m, int i, char* res) {
 	else if (!strcmp(code, ACCEPTED)) {
 		processAcceptingRequest(i, res);
 	}
+	else if (!strcmp(code, DENIED)) {
+		processDeniedRequest(i, res);
+	}
 	else if (!strcmp(code, MOVE)) {
 		processMovingRequest(meta, i, res);
 	}
@@ -351,6 +356,20 @@ void processRequest(char* m, int i, char* res) {
 	else {
 		processRequestNotFound(res);
 	} // TODO: process logout request (free user data).
+}
+
+void processDeniedRequest(int i, char* res) {
+
+	UserData* userData = &(userDatas[i]);
+
+	if (userData->status != STATUS_CHALLENGED) {
+		strcpy(res, toCharArr(BAD_REQUEST + (string)" - you are not being challenged"));
+		return;
+	}
+
+	userData->operationStatus = STATUS_OPERATION_DENIED;
+
+	strcpy(res, toCharArr(OK));
 }
 
 void processLogOut(int i, char* res) {
@@ -908,7 +927,7 @@ void processChallengedStatus(int i) {
 				log("error: not found challenger '" + (string)competitor->meta + "'");
 				// TODO: Handle more cases (challenger is offline, challenger not challenging anymore,...)
 			}
-			else {
+			else { // NOTE: challenger's operation status = closed at challengingStatus.
 
 				UserData* challenger = &(userDatas[challengerI]);
 				roomChallenger->schemaID = challenger->schemaID;
@@ -937,7 +956,19 @@ void processChallengedStatus(int i) {
 		}
 	}
 	else if (competitor->operationStatus == STATUS_OPERATION_DENIED) {
-
+		competitor->status = STATUS_LOGGED_IN;
+		int challengerI = find(competitor->meta);
+		if (challengerI == -1) {
+			// TODO: Handle more cases (challenger is offline, challenger not challenging anymore,...)
+		}
+		else {
+			UserData* challenger = &(userDatas[challengerI]);
+			challenger->status = STATUS_LOGGED_IN;
+			strcpy(challenger->meta, "");
+			strcpy(competitor->meta, "");
+			toClient(toCharArr(OK + (string)" - denied '" + challenger->username + "'"), competitor->lisSock);
+			toClient(toCharArr((string)"[NOTI]: challenge denied '" + competitor->username + "'"), challenger->lisSock);
+		}
 	}
 	else {
 		log("error: nonsense");
