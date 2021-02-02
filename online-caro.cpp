@@ -335,9 +335,6 @@ void processRequest(char* m, int i, char* res) {
 		return; // NOTE: must log in to process further.
 	}
 
-	debug("code:");
-	debug(code);d
-
 	if (!strcmp(code, LOG_OUT)) {
 		processLogOut(i, res);
 	} else if (!strcmp(code, CHALLENGING)) {
@@ -599,7 +596,7 @@ void processMovingRequest(char* meta, int i, char* res) {
 		strcpy(res, resMess);
 	}
 	else {
-		res = (char*)BAD_REQUEST;
+		strcpy(res, toCharArr(BAD_REQUEST + (string)+" - not in a room"));
 		log("error: '" + (string)userData->username + "' not in a room");
 	}
 }
@@ -892,7 +889,7 @@ void processChallengingStatus(int i) {
 		challenger->status = STATUS_LOGGED_IN; // NOTE: reset user data's status to be able to challenge others.
 		log("error: not found '" + (string)challenger->meta + "'");
 
-		char* resMess = toCharArr(NOT_FOUND + (string)" - account: '" + (string)challenger->meta + (string)"'");
+		char* resMess = toCharArr(NOT_FOUND + (string)" - account: '" + (string)challenger->meta + (string)"' offline & not exist.");
 		log(resMess);
 		toClient(resMess, challenger->lisSock);
 	}
