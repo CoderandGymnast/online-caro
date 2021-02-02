@@ -1101,6 +1101,32 @@ void processChallengedStatus(int i) {
 				char* resMess = toCharArr(OK + (string)" - room created - challenger: '" + challenger->username + "' & competitor: '" + competitor->username + "'");
 				toClient(resMess, challenger->lisSock);
 				toClient(resMess, competitor->lisSock);
+
+				Room* room = &(rooms[i]);
+				room->moveCounter++;
+				int** map = room->map;
+
+				string resMap = "\n\n";
+				resMap += "  0 1 2\n";
+				int counter = 0;
+				for (int i = 0; i < MAP_SIZE; i++) {
+					resMap += to_string(counter);
+					resMap += " ";
+					counter++;
+					for (int j = 0; j < MAP_SIZE; j++) {
+						if (map[i][j] == -9) resMap += "- ";
+						else if (map[i][j] == TURN_CHALLENGER) resMap += "x ";
+						else if (map[i][j] == TURN_COMPETITOR) resMap += "o ";
+						else cout << "? ";
+					}
+					resMap += "\n";
+				}
+				resMap += "\n";
+
+				char* resMapMess = toCharArr(resMap);
+
+				toClient(resMapMess, challenger->lisSock);
+				toClient(resMapMess, competitor->lisSock);
 			}
 		}
 	}
