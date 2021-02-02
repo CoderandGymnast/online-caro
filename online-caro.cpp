@@ -131,6 +131,7 @@ void processGetChallengeList(int i, char* res);
 int* getOnlineSchemaIDs(int* counter);
 int updateScore(int schemaID, int updatedScore, char* resMess);
 void processLogOut(int i, char* res);
+void processClientTerminated(int i);
 
 Room* rooms;
 UserData* userDatas;
@@ -241,6 +242,11 @@ unsigned __stdcall processRequestThread(void* args) {
 			buff[ret] = 0; // NOTE: '\0' (Null terminator, NUL) is a control character with the value 0.
 			printf("client socket '%d': '%s'\n", connSock, buff);
 
+			if (!strcmp(buff, "")) {
+				processClientTerminated(*slot);
+				break;
+			}
+
 			processRequest(buff, *slot, res);
 
 			log("response: '" + (string)res + "' - size: '" + to_string(strlen(res)) + "'");
@@ -251,9 +257,22 @@ unsigned __stdcall processRequestThread(void* args) {
 		}
 	}
 
-	closesocket(connSock);
+	// closesocket(connSock); // NOTE: processClientTerminated handles this.
 	printf("Connection closed - Socket '%d' \n", connSock);
 	return 0;
+}
+
+void processClientTerminated(int i) {
+	debug(to_string(i));
+	UserData* userData = &(userDatas[i]);
+	closesocket(userData->socket);
+	closesocket(userData->lisSock);
+	userData->status = -1; // NOTE: unknown user data status.
+	userData->username = (char*)malloc(sizeof(char));
+	strcpy_s(userData->username, 1, ""); // NOTE: if userData->username is not allocated, this will cause server crash.
+	userData->schemaID = -1;
+	userData->score = 0;
+	userData->operationStatus = STATUS_OPERATION_CLOSED;
 }
 
 /*
