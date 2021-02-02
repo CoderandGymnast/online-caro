@@ -700,15 +700,11 @@ void worker() { // NOTE: worker can not have return.
 			}
 		}
 		for (int i = 0; i < MAX_ROOMS; i++) {
-			debug("room:");
-			debug(to_string(i));
-			debug(to_string(rooms[i].status));
 			if (!(STATUS_ROOM_GAMING <= rooms[i].status && rooms[i].status <= STATUS_ROOM_OVER)) continue;
 			if (rooms[i].status == STATUS_ROOM_OVER) {
 
-				debug("process room over");
-
 				Room* room = &(rooms[i]);
+				room->status = -1;
 				char* challengerName = room->challenger->username;
 				char* competitorName = room->competitor->username;
 				int challengerI = find(challengerName);
@@ -874,6 +870,9 @@ void processChallengingStatus(int i) {
 	log("[FIX BUG]: server down");
 
 	UserData* challenger = &(userDatas[i]);
+
+	debug(challenger->username);
+	debug(to_string(challenger->status));
 
 	int res = find(challenger->meta);
 	if (res == -1) {
