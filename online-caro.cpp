@@ -1102,8 +1102,6 @@ void processChallengedStatus(int i) {
 				toClient(resMess, challenger->lisSock);
 				toClient(resMess, competitor->lisSock);
 
-				Room* room = &(rooms[i]);
-				room->moveCounter++;
 				int** map = room->map;
 
 				string resMap = "\n\n";

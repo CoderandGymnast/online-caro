@@ -53,7 +53,7 @@ void DatabaseOp::init() {
 	TableDatas test_m_tableDatas;
 	UserInfo test_user = UserInfo(1, "hoang1", 10);
 
-	testShowAllUsers();
+	// testShowAllUsers();
 
 	/*
 	if (createAccount("hoang4", "123456", errorMsg) != 0) {
