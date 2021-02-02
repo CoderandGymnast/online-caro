@@ -787,13 +787,13 @@ void worker() { // NOTE: worker can not have return.
 					char* tempHis = toCharArr((string)room->his + (string)"\n\n + Winner: '" + competitor->username + "'");
 					room->his = tempHis;
 				}
-				debug(room->his);
-
 
 			} else if (rooms[i].status == STATUS_ROOM_OVER) {
 
 				Room* room = &(rooms[i]);
 				room->status = -1;
+				toClient(room->his, room->challenger->lisSock);
+				toClient(room->his, room->competitor->lisSock);
 				char* challengerName = room->challenger->username;
 				char* competitorName = room->competitor->username;
 				int challengerI = find(challengerName);
@@ -918,8 +918,6 @@ void worker() { // NOTE: worker can not have return.
 					tempHis = toCharArr((string)room->his + (string)"\n\nResult: tie game");
 					room->his = tempHis;
 				}
-
-				debug(room->his);
 			}
 			else {
 				log("error: nonsense room status");
