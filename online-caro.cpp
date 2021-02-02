@@ -61,6 +61,7 @@
 #define LOG_IN "10"
 #define LOG_OUT "11"
 #define GET_CHALLENGE_LIST "20" // NOTE: always up-to-date because get directly from DB.
+#define GET_SCORE "21"
 #define CHALLENGING "30"
 #define ACCEPTED "31"
 #define DENIED "32"
@@ -139,6 +140,7 @@ void processLogOut(int i, char* res);
 void processClientTerminated(int i);
 void processDeniedRequest(int i,  char* res);
 void processSurrenderRequest(int i, char* res);
+void processGetScore(int i, char* res);
 
 Room* rooms;
 UserData* userDatas;
@@ -365,9 +367,17 @@ void processRequest(char* m, int i, char* res) {
 	else if (!strcmp(code, GET_CHALLENGE_LIST)) {
 		processGetChallengeList(i, res);
 	}
+	else if (!strcmp(code, GET_SCORE)) {
+		processGetScore(i, res);
+	}
 	else {
 		processRequestNotFound(res);
 	} // TODO: process logout request (free user data).
+}
+
+void processGetScore(int i, char* res) {
+	UserData* userData = &(userDatas[i]);
+	strcpy(res, toCharArr(OK + (string) " - score: '" + to_string(userData->score) + "'"));
 }
 
 void processSurrenderRequest(int i, char* res) {
@@ -867,12 +877,15 @@ void worker() { // NOTE: worker can not have return.
 
 				rooms[i].moveStatus = STATUS_MOVE_CLOSED;
 
+				time_t now = time(0);
+				char* dt = ctime(&now);
+
 				char* tempHis;
 				if (turn == TURN_CHALLENGER) {
-					tempHis = toCharArr((string)room->his + (string)"\n- Challenger: " + to_string(room->move[0]) + to_string(room->move[1]));
+					tempHis = toCharArr((string)room->his + "\n" + dt + (string)" - Challenger: " + to_string(room->move[0]) + to_string(room->move[1]));
 				}
 				else {
-					tempHis = toCharArr((string)room->his + (string)"\n- Competitor: " + to_string(room->move[0]) + to_string(room->move[1]));
+					tempHis = toCharArr((string)room->his + "\n" + dt + (string)" - Competitor: " + to_string(room->move[0]) + to_string(room->move[1]));
 				}
 				room->his = tempHis;
 
@@ -1073,7 +1086,7 @@ void processChallengedStatus(int i) {
 
 				room->map = initMap();
 				room->his = (char*) malloc(sizeof(char));// NOTE: init history.
-				strcpy(room->his, "");
+				strcpy(room->his, "H");
 
 				competitor->status = STATUS_GAMING;
 				challenger->status = STATUS_GAMING;
