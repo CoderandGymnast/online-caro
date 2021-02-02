@@ -482,12 +482,18 @@ void processUnauthenticatedRequest(char* code, char* meta, char* res, int i) {
 			return;
 		}
 
-		string username = ((string)meta).substr(0, dashPos);
+		string username = ((string)meta).substr(0, dashPos);		
 		string password = ((string)meta).substr(dashPos + 1, strlen(meta));
 
 		if (!strlen(toCharArr(password))) {
 			char* resMess = toCharArr(BAD_REQUEST + (string)" - missing password");
 			strcpy(res, resMess);
+			return;
+		}
+
+		// NOTE: check whether the acocunt already logged in.
+		if (find(toCharArr(username)) != -1) {
+			strcpy(res, toCharArr(BAD_REQUEST + (string)" - account '" + username + "' already logged in"));
 			return;
 		}
 
