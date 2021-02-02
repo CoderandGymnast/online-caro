@@ -335,6 +335,9 @@ void processRequest(char* m, int i, char* res) {
 		return; // NOTE: must log in to process further.
 	}
 
+	debug("code:");
+	debug(code);d
+
 	if (!strcmp(code, LOG_OUT)) {
 		processLogOut(i, res);
 	} else if (!strcmp(code, CHALLENGING)) {
@@ -721,7 +724,19 @@ void worker() { // NOTE: worker can not have return.
 					strcpy(challenger->meta, "");
 				}
 
+				int competitorI = find(competitorName);
 
+				if (competitorI == -1) {
+					// NOTE: client terminates or logout.
+				}
+				else {
+					UserData* competitor = &(userDatas[competitorI]);
+					competitor->score = room->competitor->score;
+					competitor->status = STATUS_LOGGED_IN;
+					competitor->room = (Room*)malloc(sizeof(Room)); // NOTE: fake room.
+					competitor->operationStatus = STATUS_OPERATION_CLOSED;
+					strcpy(competitor->meta, "");
+				}
 			}
 			else if (rooms[i].status == STATUS_ROOM_GAMING) {
 				if (rooms[i].moveStatus == STATUS_MOVE_CLOSED) continue;
@@ -870,9 +885,6 @@ void processChallengingStatus(int i) {
 	log("[FIX BUG]: server down");
 
 	UserData* challenger = &(userDatas[i]);
-
-	debug(challenger->username);
-	debug(to_string(challenger->status));
 
 	int res = find(challenger->meta);
 	if (res == -1) {
