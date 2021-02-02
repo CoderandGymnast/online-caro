@@ -59,7 +59,7 @@
 #define REGISTRATION "00"
 #define LOG_IN "10"
 #define LOG_OUT "11"
-#define GET_CHALLENGE_LIST "20"
+#define GET_CHALLENGE_LIST "20" // NOTE: always up-to-date because get directly from DB.
 #define CHALLENGING "30"
 #define ACCEPTED "31"
 #define DENIED "32"
@@ -265,7 +265,6 @@ unsigned __stdcall processRequestThread(void* args) {
 }
 
 void processClientTerminated(int i) {
-	debug(to_string(i));
 	UserData* userData = &(userDatas[i]);
 	closesocket(userData->socket);
 	closesocket(userData->lisSock);
@@ -686,7 +685,7 @@ void getCode(char* m, char* code, char* meta) {
 /*
 * Check rooms & user data lists to execute operations.
 */
-void worker() {
+void worker() { // NOTE: worker can not have return.
 	while (1) {
 		for (int i = 0; i < 2 * MAX_ROOMS; i++) {
 			if (!userDatas[i].operationStatus) continue;
@@ -701,9 +700,32 @@ void worker() {
 			}
 		}
 		for (int i = 0; i < MAX_ROOMS; i++) {
+			debug("room:");
+			debug(to_string(i));
+			debug(to_string(rooms[i].status));
 			if (!(STATUS_ROOM_GAMING <= rooms[i].status && rooms[i].status <= STATUS_ROOM_OVER)) continue;
 			if (rooms[i].status == STATUS_ROOM_OVER) {
-				// TODO: Free room.
+
+				debug("process room over");
+
+				Room* room = &(rooms[i]);
+				char* challengerName = room->challenger->username;
+				char* competitorName = room->competitor->username;
+				int challengerI = find(challengerName);
+
+				if (challengerI == -1) {
+					// NOTE: client terminates or logout.
+				}
+				else {
+					UserData* challenger = &(userDatas[challengerI]);
+					challenger->score = room->challenger->score;
+					challenger->status = STATUS_LOGGED_IN;
+					challenger->room = (Room*)malloc(sizeof(Room)); // NOTE: fake room.
+					challenger->operationStatus = STATUS_OPERATION_CLOSED;
+					strcpy(challenger->meta, "");
+				}
+
+
 			}
 			else if (rooms[i].status == STATUS_ROOM_GAMING) {
 				if (rooms[i].moveStatus == STATUS_MOVE_CLOSED) continue;
@@ -756,14 +778,13 @@ void worker() {
 					toClient(toCharArr(loserMess), competitor->lisSock);
 					char* winnerUpdateResMess = (char*)malloc(BUFF_SIZE * sizeof(char));
 					challenger->score += 3;
-					int winnerUpdateResult = updateScore(challenger->schemaID, challenger->score + 3, winnerUpdateResMess);
+					int winnerUpdateResult = updateScore(challenger->schemaID, challenger->score, winnerUpdateResMess);
 					if (!winnerUpdateResult)toClient(toCharArr(INTERNAL + (string) +" - " + winnerUpdateResMess), competitor->lisSock);
 					competitor->score -= 3;
 					char* loserUpdateMess = (char*)malloc(BUFF_SIZE * sizeof(char));
-					int loserUpdateResult = updateScore(competitor->schemaID, competitor->score - 3, loserUpdateMess);
+					int loserUpdateResult = updateScore(competitor->schemaID, competitor->score, loserUpdateMess);
 					if (!loserUpdateResult)toClient(toCharArr(INTERNAL + (string) + " - " + loserUpdateMess), competitor->lisSock);
 					room->status = STATUS_ROOM_OVER;
-					return;
 				}
 				else if (matchResult == TURN_COMPETITOR) {
 					string winnerMess = (string)"[NOTI]: winner '" + competitor->username + "'";
@@ -772,22 +793,18 @@ void worker() {
 					toClient(toCharArr(loserMess), challenger->lisSock);
 					competitor->score += 3;
 					char* winnerUpdateResMess = (char*)malloc(BUFF_SIZE * sizeof(char));
-					int winnerUpdateResult = updateScore(competitor->schemaID, competitor->score + 3, winnerUpdateResMess);
+					int winnerUpdateResult = updateScore(competitor->schemaID, competitor->score, winnerUpdateResMess);
 					if (!winnerUpdateResult)toClient(toCharArr(INTERNAL + (string) +" - " + winnerUpdateResMess), competitor->lisSock);
 					challenger->score -= 3;
 					char* loserUpdateMess = (char*)malloc(BUFF_SIZE * sizeof(char));
-					int loserUpdateResult = updateScore(challenger->schemaID, challenger->score - 3, loserUpdateMess);
+					int loserUpdateResult = updateScore(challenger->schemaID, challenger->score, loserUpdateMess);
 					if (!loserUpdateResult)toClient(toCharArr(INTERNAL + (string) +" - " + loserUpdateMess), competitor->lisSock);
 					room->status = STATUS_ROOM_OVER;
-					return;
-				}
-
-				if (room->moveCounter == MAP_SIZE * MAP_SIZE) {
+				}else if (room->moveCounter == MAP_SIZE * MAP_SIZE) {
 					char* resMess = toCharArr((string)"[NOTI]: tie game");
 					toClient(resMess, challenger->lisSock);
 					toClient(resMess, competitor->lisSock);
 					room->status = STATUS_ROOM_OVER;
-					return;
 				}
 			}
 			else {
