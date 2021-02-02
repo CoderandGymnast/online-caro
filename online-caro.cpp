@@ -615,6 +615,10 @@ void processMovingRequest(char* meta, int i, char* res) {
 			char* resMess = toCharArr(BAD_REQUEST + (string)" - invalid move '" + meta + "'");
 			strcpy(res, resMess);
 		}
+		else if (room->map[*i][*j] == TURN_COMPETITOR || room->map[*i][*j] == TURN_CHALLENGER) {
+			char* resMess = toCharArr(BAD_REQUEST + (string)" - position taken: '" + meta + "'");
+			strcpy(res, resMess);
+		}
 		else {
 			room->move[0] = *i;
 			room->move[1] = *j;
