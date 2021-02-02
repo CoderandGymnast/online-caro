@@ -52,6 +52,7 @@
 
 #define STATUS_ROOM_GAMING 0
 #define STATUS_ROOM_OVER 1
+#define STATUS_ROOM_SURRENDER 2
 
 #define STATUS_MOVE_CLOSED 0
 #define STATUS_MOVE_OPENED 1
@@ -65,6 +66,7 @@
 #define DENIED "32"
 
 #define MOVE "40"
+#define SURRENDER "41"
 
 using namespace std;
 
@@ -86,6 +88,7 @@ struct Room {
 	int moveStatus; // 0: closed, 1: opened.
 	int* move;
 	int moveCounter;
+	char* meta; // stored surrender.
 };
 
 struct UserData {
@@ -134,6 +137,7 @@ int updateScore(int schemaID, int updatedScore, char* resMess);
 void processLogOut(int i, char* res);
 void processClientTerminated(int i);
 void processDeniedRequest(int i,  char* res);
+void processSurrenderRequest(int i, char* res);
 
 Room* rooms;
 UserData* userDatas;
@@ -349,12 +353,34 @@ void processRequest(char* m, int i, char* res) {
 	else if (!strcmp(code, MOVE)) {
 		processMovingRequest(meta, i, res);
 	}
+	else if (!strcmp(code, SURRENDER)) {
+		processSurrenderRequest(i, res);
+	}
 	else if (!strcmp(code, GET_CHALLENGE_LIST)) {
 		processGetChallengeList(i, res);
 	}
 	else {
 		processRequestNotFound(res);
 	} // TODO: process logout request (free user data).
+}
+
+void processSurrenderRequest(int i, char* res) {
+	UserData* userData = &(userDatas[i]);
+	Room* room = userData->room;
+	if (room->status == STATUS_ROOM_GAMING && userData->status == STATUS_GAMING) {
+		room->status = STATUS_ROOM_SURRENDER;
+		room->meta = (char*)malloc(strlen(userData->username) * sizeof(char));
+		strcpy(room->meta, userData->username);
+		strcpy(res, toCharArr(OK + (string)" - processing surrender..."));
+	}
+	else if (room->status == STATUS_ROOM_OVER) {
+		char* resMess = toCharArr(BAD_REQUEST + (string)" - match over");
+		strcpy(res, resMess);
+	}
+	else {
+		strcpy(res, toCharArr(BAD_REQUEST + (string)+" - not in a room"));
+		log("error: '" + (string)userData->username + "' not in a room");
+	}
 }
 
 void processDeniedRequest(int i, char* res) {
@@ -700,8 +726,56 @@ void worker() { // NOTE: worker can not have return.
 			}
 		}
 		for (int i = 0; i < MAX_ROOMS; i++) {
-			if (!(STATUS_ROOM_GAMING <= rooms[i].status && rooms[i].status <= STATUS_ROOM_OVER)) continue;
-			if (rooms[i].status == STATUS_ROOM_OVER) {
+			if (!(STATUS_ROOM_GAMING <= rooms[i].status && rooms[i].status <= STATUS_ROOM_SURRENDER)) continue;
+			if (rooms[i].status == STATUS_ROOM_SURRENDER) {
+
+				Room* room = &(rooms[i]);
+				room->status = STATUS_ROOM_OVER; // NOTE: to free room.
+				Competitor* challenger = rooms[i].challenger;
+				Competitor* competitor = rooms[i].competitor;
+
+				int result;
+				debug("Server Crash Preventation");
+				if (!strcmp(room->meta, challenger->username)) {
+					result = TURN_COMPETITOR;
+				}
+				else {
+					result = TURN_CHALLENGER;
+				}
+
+				if (result == TURN_CHALLENGER) {
+					string winnerMess = (string)"[NOTI]: winner '" + challenger->username + "'";
+					string loserMess = (string)"[NOTI]: loser '" + competitor->username + "'";
+					toClient(toCharArr(winnerMess), challenger->lisSock);
+					toClient(toCharArr(loserMess), competitor->lisSock);
+					char* winnerUpdateResMess = (char*)malloc(BUFF_SIZE * sizeof(char));
+					challenger->score += 3;
+					int winnerUpdateResult = updateScore(challenger->schemaID, challenger->score, winnerUpdateResMess);
+					if (!winnerUpdateResult)toClient(toCharArr(INTERNAL + (string)+" - " + winnerUpdateResMess), competitor->lisSock);
+					competitor->score -= 3;
+					char* loserUpdateMess = (char*)malloc(BUFF_SIZE * sizeof(char));
+					int loserUpdateResult = updateScore(competitor->schemaID, competitor->score, loserUpdateMess);
+					if (!loserUpdateResult)toClient(toCharArr(INTERNAL + (string)+" - " + loserUpdateMess), competitor->lisSock);
+					room->status = STATUS_ROOM_OVER;
+				}
+				else if (result == TURN_COMPETITOR) {
+					debug("2");
+					string winnerMess = (string)"[NOTI]: winner '" + competitor->username + "'";
+					string loserMess = (string)"[NOTI]: loser '" + challenger->username + "'";
+					toClient(toCharArr(winnerMess), competitor->lisSock);
+					toClient(toCharArr(loserMess), challenger->lisSock);
+					competitor->score += 3;
+					char* winnerUpdateResMess = (char*)malloc(BUFF_SIZE * sizeof(char));
+					int winnerUpdateResult = updateScore(competitor->schemaID, competitor->score, winnerUpdateResMess);
+					if (!winnerUpdateResult)toClient(toCharArr(INTERNAL + (string)+" - " + winnerUpdateResMess), competitor->lisSock);
+					challenger->score -= 3;
+					char* loserUpdateMess = (char*)malloc(BUFF_SIZE * sizeof(char));
+					int loserUpdateResult = updateScore(challenger->schemaID, challenger->score, loserUpdateMess);
+					if (!loserUpdateResult)toClient(toCharArr(INTERNAL + (string)+" - " + loserUpdateMess), competitor->lisSock);
+					room->status = STATUS_ROOM_OVER;
+				}
+
+			} else if (rooms[i].status == STATUS_ROOM_OVER) {
 
 				Room* room = &(rooms[i]);
 				room->status = -1;
@@ -741,7 +815,7 @@ void worker() { // NOTE: worker can not have return.
 				Competitor* challenger = rooms[i].challenger;
 				Competitor* competitor = rooms[i].competitor;
 				if (turn == TURN_CHALLENGER) {
-					//printf("[DEBUG]: send code:'40' - meta:'%s' to client with Socket '%d'\n", competitor->username, competitor->socket);
+					//printf("[DEBUG]:d send code:'40' - meta:'%s' to client with Socket '%d'\n", competitor->username, competitor->socket);
 					printf("'%s' moves '%d%d'\n", challenger->username, rooms[i].move[0], rooms[i].move[1]);
 					rooms[i].turn = TURN_COMPETITOR;
 				}
