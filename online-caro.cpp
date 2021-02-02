@@ -89,6 +89,7 @@ struct Room {
 	int* move;
 	int moveCounter;
 	char* meta; // stored surrender.
+	char* his;
 };
 
 struct UserData {
@@ -766,9 +767,10 @@ void worker() { // NOTE: worker can not have return.
 					int loserUpdateResult = updateScore(competitor->schemaID, competitor->score, loserUpdateMess);
 					if (!loserUpdateResult)toClient(toCharArr(INTERNAL + (string)+" - " + loserUpdateMess), competitor->lisSock);
 					room->status = STATUS_ROOM_OVER;
+					char* tempHis = toCharArr((string)room->his + (string)"\n\n + Winner: '" + challenger->username + "'");
+					room->his = tempHis;
 				}
 				else if (result == TURN_COMPETITOR) {
-					debug("2");
 					string winnerMess = (string)"[NOTI]: winner '" + competitor->username + "'";
 					string loserMess = (string)"[NOTI]: loser '" + challenger->username + "'";
 					toClient(toCharArr(winnerMess), competitor->lisSock);
@@ -782,7 +784,11 @@ void worker() { // NOTE: worker can not have return.
 					int loserUpdateResult = updateScore(challenger->schemaID, challenger->score, loserUpdateMess);
 					if (!loserUpdateResult)toClient(toCharArr(INTERNAL + (string)+" - " + loserUpdateMess), competitor->lisSock);
 					room->status = STATUS_ROOM_OVER;
+					char* tempHis = toCharArr((string)room->his + (string)"\n\n + Winner: '" + competitor->username + "'");
+					room->his = tempHis;
 				}
+				debug(room->his);
+
 
 			} else if (rooms[i].status == STATUS_ROOM_OVER) {
 
@@ -861,6 +867,15 @@ void worker() { // NOTE: worker can not have return.
 
 				rooms[i].moveStatus = STATUS_MOVE_CLOSED;
 
+				char* tempHis;
+				if (turn == TURN_CHALLENGER) {
+					tempHis = toCharArr((string)room->his + (string)"\n- Challenger: " + to_string(room->move[0]) + to_string(room->move[1]));
+				}
+				else {
+					tempHis = toCharArr((string)room->his + (string)"\n- Competitor: " + to_string(room->move[0]) + to_string(room->move[1]));
+				}
+				room->his = tempHis;
+
 				int matchResult = checkResult(map);
 				if (matchResult == TURN_CHALLENGER) {
 					string winnerMess = (string)"[NOTI]: winner '" + challenger->username + "'";
@@ -876,6 +891,8 @@ void worker() { // NOTE: worker can not have return.
 					int loserUpdateResult = updateScore(competitor->schemaID, competitor->score, loserUpdateMess);
 					if (!loserUpdateResult)toClient(toCharArr(INTERNAL + (string) + " - " + loserUpdateMess), competitor->lisSock);
 					room->status = STATUS_ROOM_OVER;
+					tempHis = toCharArr((string)room->his + (string)"\n\n + Winner: '" + challenger->username + "'" );
+					room->his = tempHis;
 				}
 				else if (matchResult == TURN_COMPETITOR) {
 					string winnerMess = (string)"[NOTI]: winner '" + competitor->username + "'";
@@ -891,12 +908,18 @@ void worker() { // NOTE: worker can not have return.
 					int loserUpdateResult = updateScore(challenger->schemaID, challenger->score, loserUpdateMess);
 					if (!loserUpdateResult)toClient(toCharArr(INTERNAL + (string) +" - " + loserUpdateMess), competitor->lisSock);
 					room->status = STATUS_ROOM_OVER;
+					tempHis = toCharArr((string)room->his + (string)"\n\n + Winner: '" + competitor->username + "'");
+					room->his = tempHis;
 				}else if (room->moveCounter == MAP_SIZE * MAP_SIZE) {
 					char* resMess = toCharArr((string)"[NOTI]: tie game");
 					toClient(resMess, challenger->lisSock);
 					toClient(resMess, competitor->lisSock);
 					room->status = STATUS_ROOM_OVER;
+					tempHis = toCharArr((string)room->his + (string)"\n\nResult: tie game");
+					room->his = tempHis;
 				}
+
+				debug(room->his);
 			}
 			else {
 				log("error: nonsense room status");
@@ -1051,6 +1074,8 @@ void processChallengedStatus(int i) {
 				room->moveCounter = 0;
 
 				room->map = initMap();
+				room->his = (char*) malloc(sizeof(char));// NOTE: init history.
+				strcpy(room->his, "");
 
 				competitor->status = STATUS_GAMING;
 				challenger->status = STATUS_GAMING;
