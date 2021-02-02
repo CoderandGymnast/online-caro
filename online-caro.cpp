@@ -58,6 +58,7 @@
 
 #define REGISTRATION "00"
 #define LOG_IN "10"
+#define LOG_OUT "11"
 #define GET_CHALLENGE_LIST "20"
 #define CHALLENGING "30"
 #define ACCEPTED "31"
@@ -129,6 +130,7 @@ void processUnauthenticatedRequest(char* code, char* meta, char* res, int i);
 void processGetChallengeList(int i, char* res);
 int* getOnlineSchemaIDs(int* counter);
 int updateScore(int schemaID, int updatedScore, char* resMess);
+void processLogOut(int i, char* res);
 
 Room* rooms;
 UserData* userDatas;
@@ -313,7 +315,9 @@ void processRequest(char* m, int i, char* res) {
 		return; // NOTE: must log in to process further.
 	}
 
-	if (!strcmp(code, CHALLENGING)) {
+	if (!strcmp(code, LOG_OUT)) {
+		processLogOut(i, res);
+	} else if (!strcmp(code, CHALLENGING)) {
 		processChallengingRequest(meta, i, res);
 	}
 	else if (!strcmp(code, ACCEPTED)) {
@@ -328,6 +332,18 @@ void processRequest(char* m, int i, char* res) {
 	else {
 		processRequestNotFound(res);
 	} // TODO: process logout request (free user data).
+}
+
+void processLogOut(int i, char* res) {
+
+	UserData* userData = &(userDatas[i]);
+	userData->status = STATUS_ATTACHED;
+	strcpy_s(userData->username, 1, "");
+	userData->schemaID = -1; // NOTE: -1 does not exist on DB.
+	userData->score = 0;
+	userData->operationStatus = STATUS_OPERATION_CLOSED;
+
+	strcpy(res, toCharArr(OK + (string)" - logged out")); // NOTE: do not need strcpy_s in this situation.
 }
 
 void processGetChallengeList(int i, char* res) {
